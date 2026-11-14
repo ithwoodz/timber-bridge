@@ -38,13 +38,27 @@ function warrenList() {
   for (let x = 0; x < 12; x += 2) L.push([x, 0, x + 1, 3, 'wood1'], [x + 1, 3, x + 2, 0, 'wood1']);
   return L;
 }
-const kingList = () => [[0, 0, 6, 3, 'wood3'], [6, 3, 12, 0, 'wood3'], [6, 3, 6, 0, 'steel'], [0, 0, 6, 0, 'steel'], [6, 0, 12, 0, 'steel']];
+// 고강도 프리셋: 가장 약한 곳(절점·부재)을 함께 한 단계씩 보강하기를 더 이상 안 될 때까지 반복한 뒤,
+// 하중이 줄지 않는 범위에서 겹·고무줄을 덜어 낸 결과. 부재 = [x1, y1, x2, y2, 목재 겹, 철근]
+function buildFull(name, members, wraps) {
+  const m = blankModel(); m.name = name;
+  for (const [x1, y1, x2, y2, wood, steel] of members) {
+    addMember(m, { x: x1, y: y1 }, { x: x2, y: y2 }, { wood });
+    if (steel) addMember(m, { x: x1, y: y1 }, { x: x2, y: y2 }, { steel: true });
+  }
+  Object.assign(m.wraps, wraps);
+  const ls = levelsOf(m); autoBrace(m, 0); if (ls[0] !== 0) autoBrace(m, ls[0]);
+  return m;
+}
+const STRONG_PRATT = [[0,0,2,0,1,0],[2,0,4,0,1,0],[4,0,6,0,1,0],[6,0,8,0,1,0],[8,0,10,0,1,0],[10,0,12,0,1,0],[2,3,4,3,2,0],[4,3,6,3,2,0],[6,3,8,3,2,0],[8,3,10,3,2,0],[0,0,2,3,3,0],[12,0,10,3,3,0],[2,0,2,3,1,0],[4,0,4,3,2,0],[6,0,6,3,1,0],[8,0,8,3,2,0],[10,0,10,3,1,0],[2,3,4,0,1,0],[4,3,6,0,1,0],[10,3,8,0,1,0],[8,3,6,0,1,0]];
+const STRONG_PRATT_W = { '6,0': 8, '4,3': 8, '4,0': 8, '2,3': 8, '8,0': 8, '8,3': 8, '10,3': 8, '0,0': 5, '12,0': 5, '2,0': 2, '10,0': 2, '6,3': 2 };
+const STRONG_WARREN = [[0,0,2,0,1,0],[2,0,4,0,1,0],[4,0,6,0,1,0],[6,0,8,0,1,0],[8,0,10,0,1,0],[10,0,12,0,1,0],[1,3,3,3,1,0],[3,3,5,3,2,0],[5,3,7,3,2,0],[7,3,9,3,2,0],[9,3,11,3,1,0],[0,0,1,3,3,0],[1,3,2,0,1,0],[2,0,3,3,3,0],[3,3,4,0,1,0],[4,0,5,3,3,0],[5,3,6,0,1,0],[6,0,7,3,1,0],[7,3,8,0,3,0],[8,0,9,3,1,0],[9,3,10,0,3,0],[10,0,11,3,1,0],[11,3,12,0,3,0]];
+const STRONG_WARREN_W = { '10,0': 8, '11,3': 8, '4,0': 8, '3,3': 8, '6,0': 8, '5,3': 8, '2,0': 8, '1,3': 8, '8,0': 8, '9,3': 8, '7,3': 8, '12,0': 4, '0,0': 4 };
 const PRESETS = {
-  pratt: () => build('Pratt 트러스', prattList(3, false)),
-  prattSteel: () => build('Pratt + 철근 하현재', prattList(3, true)),
-  warren: () => build('Warren 트러스', warrenList()),
-  king: () => build('킹포스트 + 철근', kingList()),
-  low: () => build('낮은 Pratt (h = 5 cm)', prattList(1, false)),
+  warrenStrong: () => buildFull('Warren 고강도', STRONG_WARREN, STRONG_WARREN_W),
+  prattStrong: () => buildFull('Pratt 고강도', STRONG_PRATT, STRONG_PRATT_W),
+  warren: () => build('Warren 트러스 (기본)', warrenList()),
+  pratt: () => build('Pratt 트러스 (기본)', prattList(3, false)),
   empty: () => blankModel()
 };
 
