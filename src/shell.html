@@ -102,6 +102,8 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
 .rgrid{display:grid;grid-template-columns:1fr 110px;gap:5px 8px;align-items:center;font-size:12px;margin:8px 0}
 .rgrid input,.rgrid select{font:inherit;font-size:12px;padding:3px 5px;border:2px solid #000;background:#fff;color:#111;width:100%;min-width:0}
 .rgrid select.btn{color:#fff;background:var(--btn)}
+.wbox{display:flex;align-items:center;gap:4px;font-size:13px}
+.wbox input{width:64px;font:inherit;font-size:13px;padding:4px 6px;border:2px solid #000;background:#fff;color:#111;color-scheme:light}
 .sgbtns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 #suglist,.tips{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:12px;line-height:1.5}
 #suglist li{border-bottom:1px dashed #9a9a9a;padding-bottom:6px;display:grid;gap:3px}
@@ -230,6 +232,8 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
         <summary>우리 대회 규칙 입력 (빈칸 = 제한 없음)</summary>
         <div class="rgrid">
           <label for="r-score">점수 기준</label><select class="btn" id="r-score"><option value="eff">하중 ÷ 무게 (효율)</option><option value="load">최대 하중</option></select>
+          <label for="r-minw">다리 폭 최소 (mm)</label><input id="r-minw" type="number" min="0" step="1" placeholder="예: 60">
+          <label for="r-minl">다리 길이 최소 (mm)</label><input id="r-minl" type="number" min="0" step="1" placeholder="예: 600">
           <label for="r-weight">무게 상한 (g)</label><input id="r-weight" type="number" min="0" step="1" placeholder="예: 150">
           <label for="r-defl">처짐 한계 (mm)</label><input id="r-defl" type="number" min="0" step="0.1" placeholder="예: 12.7">
           <label for="r-sticks">각재 수 상한</label><input id="r-sticks" type="number" min="0" step="1" placeholder="예: 30">
@@ -270,7 +274,7 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
     <div class="panel">
       <h2>설정</h2>
       <div class="sel-row"><label for="width">다리 폭 (앞·뒤 트러스 간격)</label>
-        <select class="btn" id="width"><option value="1">5 cm</option><option value="2">10 cm</option><option value="3">15 cm</option><option value="4">20 cm</option></select></div>
+        <span class="wbox"><input id="width" type="number" min="3" max="30" step="0.5" inputmode="decimal"> cm</span></div>
       <label class="chk"><input type="checkbox" id="brace" checked> 횡브레이싱 효과 반영 (끄면 비교용)</label>
       <label class="chk"><input type="checkbox" id="forces"> 부재력 보기 (파랑 인장 / 빨강 압축)</label>
     </div>

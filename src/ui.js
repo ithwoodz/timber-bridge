@@ -875,14 +875,18 @@ document.addEventListener('keydown', e => {
   else if (!e.ctrlKey && !e.metaKey && !e.altKey && ['q', 'w', 'r', 'e'].includes(e.key.toLowerCase())) setView({ q: 'side', w: 'plan', r: 'under', e: '3d' }[e.key.toLowerCase()]);
 });
 function doUndo() { if (mode !== 'build' || !undoStack.length) return; S = JSON.parse(undoStack.pop()); syncControls(); changed(false); }
-function syncControls() { $('brace').checked = S.bracingOn; $('width').value = String(S.width); }
+function syncControls() { $('brace').checked = S.bracingOn; $('width').value = String(+(S.width * CM).toFixed(1)); }
 $('undo').onclick = doUndo;
 $('clear').onclick = () => { if (mode !== 'build') return; snapshot(); S.segs = {}; S.plan = {}; S.wraps = {}; S.name = '사용자 설계'; changed(false); toast('모두 지웠어요. 되돌리기(Ctrl+Z)로 복구할 수 있어요.'); };
 $('preset').onchange = e => { const v = e.target.value; e.target.value = ''; e.target.blur(); if (!v || mode !== 'build') return; snapshot(); const keepW = S.width; S = PRESETS[v](); S.width = keepW; syncControls(); changed(false); };
 $('test').onclick = startTest;
 $('brace').onchange = e => { snapshot(); S.bracingOn = e.target.checked; changed(); };
 $('forces').onchange = e => { showForces = e.target.checked; update3D(0, null, false); dirty = true; };
-$('width').onchange = e => { snapshot(); S.width = +e.target.value; changed(); fit(); };
+$('width').onchange = e => {
+  const v = Math.max(3, Math.min(30, Math.round((+e.target.value || 10) * 2) / 2)); // cm, 0.5 단위
+  e.target.value = v; if (v === Wcm()) return;
+  snapshot(); S.width = v / CM; changed(); fit();
+};
 $('autobrace').onclick = () => { if (!nodesAtLevel(S, level).length) return; snapshot(); autoBrace(S, level); changed(); toast(`높이 ${level * CM} cm 에 가로보와 X자 브레이싱을 채웠어요.`); };
 $('clearlevel').onclick = () => { snapshot(); for (const [k, p] of Object.entries(S.plan)) if (p.y === level) delete S.plan[k]; changed(); };
 $('clearhist').onclick = () => { history = []; renderHistory(); save(); };

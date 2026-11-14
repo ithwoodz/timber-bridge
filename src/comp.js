@@ -1,7 +1,7 @@
 
 /* ───────────────── 대회 모드: 규칙 점검 · 점수 · 개선 추천 · 팁 ───────────────── */
 const RULES_KEY = 'tb-lab-3d-rules';
-const RULES = Object.assign({ score: 'eff', maxWeight: '', deflLimit: '', maxSticks: '', maxSteel: '', maxWraps: '', cap: '', stock: 60, margin: 0.5 },
+const RULES = Object.assign({ score: 'eff', minWidth: 60, minLength: 600, maxWeight: '', deflLimit: '', maxSticks: '', maxSteel: '', maxWraps: '', cap: '', stock: 60, margin: 0.5 },
   (() => { try { return JSON.parse(localStorage.getItem(RULES_KEY)) || {}; } catch (e) { return {}; } })());
 function storeRules() { try { localStorage.setItem(RULES_KEY, JSON.stringify(RULES)); } catch (e) {} }
 const numOrNull = v => (v === '' || v == null || isNaN(+v) || +v <= 0) ? null : +v;
@@ -28,6 +28,9 @@ function compEval(m, r) {
   const ev = { ok: r.status === 'ok', kg: 0, counted: 0, limitBy: null, checks: [], viol: 0, score: null, mat: materialsOf(m) };
   const chk = (label, val, lim, ok, unit) => { ev.checks.push({ label, val, lim, ok, unit }); if (!ok) ev.viol++; };
   const mw = numOrNull(RULES.maxWeight), ms = numOrNull(RULES.maxSticks), mst = numOrNull(RULES.maxSteel), mwr = numOrNull(RULES.maxWraps), dl = numOrNull(RULES.deflLimit), cap = numOrNull(RULES.cap);
+  const mnw = numOrNull(RULES.minWidth), mnl = numOrNull(RULES.minLength);
+  if (mnw) chk('다리 폭', (m.width * 50).toFixed(0) + ' mm', '≥ ' + mnw + ' mm', m.width * 50 >= mnw - 1e-6);
+  if (mnl) { const xs = [...structNodes(m).values()].map(n => n.x); const len = xs.length ? (Math.max(...xs) - Math.min(...xs)) * 50 : 0; chk('다리 길이', len.toFixed(0) + ' mm', '≥ ' + mnl + ' mm', len >= mnl - 1e-6); }
   if (mw) chk('다리 무게', r.weight.toFixed(1) + ' g', '≤ ' + mw + ' g', r.weight <= mw);
   if (ms) chk(`각재 수 (${RULES.stock} cm짜리)`, ev.mat.sticks + '개', '≤ ' + ms + '개', ev.mat.sticks <= ms);
   if (mst) chk('철근 길이', (ev.mat.steel / 10).toFixed(0) + ' cm', '≤ ' + mst + ' cm', ev.mat.steel / 10 <= mst);
@@ -114,7 +117,7 @@ const GENERAL_TIPS = [
 
 /* ── 패널 ── */
 function syncRules() {
-  for (const [id, key] of [['r-score', 'score'], ['r-weight', 'maxWeight'], ['r-defl', 'deflLimit'], ['r-sticks', 'maxSticks'], ['r-stock', 'stock'], ['r-steel', 'maxSteel'], ['r-wraps', 'maxWraps'], ['r-cap', 'cap']]) {
+  for (const [id, key] of [['r-score', 'score'], ['r-minw', 'minWidth'], ['r-minl', 'minLength'], ['r-weight', 'maxWeight'], ['r-defl', 'deflLimit'], ['r-sticks', 'maxSticks'], ['r-stock', 'stock'], ['r-steel', 'maxSteel'], ['r-wraps', 'maxWraps'], ['r-cap', 'cap']]) {
     const el = $(id); if (el && document.activeElement !== el) el.value = RULES[key];
   }
 }
@@ -152,7 +155,7 @@ $('suglist').addEventListener('click', e => {
 });
 $('sugbtn').onclick = () => { if (mode === 'build') renderSuggestions(); };
 $('tunebtn').onclick = () => { if (mode === 'build') autoTune(); };
-for (const [id, key] of [['r-score', 'score'], ['r-weight', 'maxWeight'], ['r-defl', 'deflLimit'], ['r-sticks', 'maxSticks'], ['r-stock', 'stock'], ['r-steel', 'maxSteel'], ['r-wraps', 'maxWraps'], ['r-cap', 'cap']]) {
+for (const [id, key] of [['r-score', 'score'], ['r-minw', 'minWidth'], ['r-minl', 'minLength'], ['r-weight', 'maxWeight'], ['r-defl', 'deflLimit'], ['r-sticks', 'maxSticks'], ['r-stock', 'stock'], ['r-steel', 'maxSteel'], ['r-wraps', 'maxWraps'], ['r-cap', 'cap']]) {
   $(id).addEventListener('change', e => {
     const v = e.target.value;
     RULES[key] = key === 'score' ? v : key === 'stock' ? Math.max(10, +v || 60) : (v === '' ? '' : Math.max(0, +v));
