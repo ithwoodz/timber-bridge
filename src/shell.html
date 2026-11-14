@@ -1,0 +1,322 @@
+<title>Timber Bridge 3D 실험실</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+/* 레이아웃: 왼쪽 넓은 건설 화면(측면·위·3D 탭 + 핫바), 오른쪽 결과 패널. 블록 게임 UI 한 가지 룩으로 고정 */
+:root{
+  --ink:#eeeeee; --bg:#2b2b2b; --bar:#1e1e1e; --edge:#000; --gold:#ffe066;
+  --panel:#c6c6c6; --panel-ink:#262626; --panel-sub:#444; --ok:#1f6f12; --bad:#a1000a;
+  --btn:#6f6f6f; --btn-hi:#a8a8a8; --btn-lo:#3c3c3c; --go:#3c8527;
+  --f-pixel:'DotGothic16','Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{background:var(--bg)}
+body{color:var(--ink);font-family:var(--f-pixel)}
+header{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--bar);border-bottom:3px solid #111;
+  padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:19px;margin:0 10px 0 0;font-weight:400;color:var(--gold);text-shadow:2px 2px 0 #3a2a00}
+.btn{font:inherit;font-size:13px;color:#fff;background:var(--btn);border:2px solid #000;box-shadow:inset 2px 2px 0 var(--btn-hi),inset -2px -2px 0 var(--btn-lo);padding:6px 10px;cursor:pointer;text-shadow:1px 1px 0 #333;border-radius:0}
+.btn:hover{background:#7f8fbf}
+.btn:focus-visible,.slot:focus-visible,.tab:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
+.btn.sm{font-size:12px;padding:4px 8px}
+.btn.on{background:#5a6fa8}
+.btn.go{font-size:16px;padding:11px 14px;background:var(--go);width:100%;margin-top:10px}
+.btn.go:hover{background:#4ca333}
+.btn.go.stop{background:#8a2a20}
+main{display:grid;grid-template-columns:minmax(0,1fr) 340px;align-items:start;gap:12px;max-width:1500px;margin:0 auto;
+  padding-block:12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+@media(max-width:940px){main{grid-template-columns:minmax(0,1fr)}}
+#stage{position:relative;border:3px solid #000;background:var(--bar);user-select:none;-webkit-user-select:none;min-width:0}
+#viewbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px;background:#1e1e1e;border-bottom:3px solid #000}
+.tab{font:inherit;font-size:14px;color:#ddd;background:#3a3a3a;border:2px solid #000;box-shadow:inset 2px 2px 0 #5a5a5a,inset -2px -2px 0 #222;padding:6px 12px;cursor:pointer}
+.tab .k{font-size:11px;color:#aaa;margin-left:4px}
+.tab.on{background:#8b8b8b;color:#fff;box-shadow:inset 2px 2px 0 #fff,inset -2px -2px 0 #555;text-shadow:1px 1px 0 #000}
+.tab:disabled{opacity:.4;cursor:not-allowed}
+#levels,#ptools{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+#levels{margin-left:6px;padding-left:8px;border-left:2px solid #444}
+#vhint{width:100%;font-size:12px;color:#bbb;line-height:1.5;padding:0 2px}
+#viewport{position:relative;overflow:hidden}
+#cv{display:block;width:100%;touch-action:none;cursor:crosshair}
+#gl{position:absolute;inset:0;display:none;cursor:grab}
+#viewport.v3d #gl{display:block}
+#viewport.v3d #cv{visibility:hidden}
+#hbwrap{display:flex;justify-content:center;padding:6px 0;background:#1e1e1e;border-top:3px solid #000}
+#hotbar{display:flex;background:#2d2d2d;border:3px solid #000;padding:2px;max-width:100%}
+.slot{width:50px;height:50px;position:relative;background:#8b8b8b;border:2px solid;border-color:#373737 #fff #fff #373737;margin:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font:inherit}
+.slot.sel{outline:3px solid #fff;outline-offset:-1px;z-index:1;background:#a0a0a0}
+.slot .k{position:absolute;left:3px;top:0;font-size:11px;color:#fff;text-shadow:1px 1px 0 #000}
+.slot svg{width:34px;height:34px}
+@media(max-width:520px){.slot{width:40px;height:40px}.slot svg{width:26px;height:26px}}
+#toolname{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);font-size:15px;color:#fff;text-shadow:2px 2px 0 #000;pointer-events:none;transition:opacity .8s;white-space:nowrap}
+#counter{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:34px;color:#fff;text-shadow:3px 3px 0 #000;pointer-events:none;opacity:0;transition:opacity .5s;text-align:center;white-space:nowrap}
+#counter small{display:block;font-size:15px;color:var(--gold)}
+#tip{position:absolute;pointer-events:none;background:rgba(16,0,16,.93);border:2px solid #2a0a5a;color:#fff;padding:6px 9px;font-size:12px;line-height:1.55;white-space:nowrap;z-index:5}
+#tip b{color:var(--gold);font-weight:400}
+#tip hr{border:0;border-top:1px dashed #6a4a9a;margin:4px 0}
+#toast{position:absolute;top:64px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;padding:8px 12px;font-size:13px;max-width:90%;text-align:center;z-index:6}
+aside{display:flex;flex-direction:column;gap:10px;min-width:0}
+.panel{background:var(--panel);color:var(--panel-ink);border:3px solid #000;box-shadow:inset 3px 3px 0 #fff,inset -3px -3px 0 #555;padding:12px 14px}
+.panel h2{font-size:14px;margin:0 0 6px;font-weight:400;color:#404040;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.big{font-size:42px;line-height:1.1;color:var(--ok);font-variant-numeric:tabular-nums}
+.sub{font-size:12px;color:var(--panel-sub)}
+.pname{font-size:12px;color:#555;margin-bottom:2px}
+.pill{font-size:11px;padding:2px 7px;border:2px solid #000;color:#fff;white-space:nowrap}
+.pill.ok{background:#3c8527}.pill.bad{background:#a1000a}.pill.idle{background:#777}
+.row{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:4px 0;border-bottom:1px dashed #9a9a9a;font-variant-numeric:tabular-nums}
+.row span:last-child{text-align:right}
+.row:last-child{border:0}
+.cause{font-size:13px;line-height:1.6}
+.bad{color:var(--bad)}
+.warn{margin-top:6px;padding:6px 8px;background:#e8d9a0;border:2px solid #7a6420;font-size:12px;line-height:1.55;color:#3d3000}
+.muted{color:#777;font-size:12px}
+#weak{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+#weak li{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:12px}
+#weak .wl{grid-column:1/3;line-height:1.4}
+#weak .wbar{height:8px;background:#8f8f8f;border:1px solid #000;align-self:center}
+#weak .wbar i{display:block;height:100%;background:#d0412f}
+#weak .wk{font-variant-numeric:tabular-nums}
+label.chk{display:flex;gap:8px;align-items:center;font-size:13px;padding:4px 0;cursor:pointer}
+.sel-row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;padding:4px 0}
+select.btn{padding:4px 6px}
+table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:3px 4px;border-bottom:1px dashed #9a9a9a}
+th{font-weight:400;color:#555}
+td:not(:first-child),th:not(:first-child){text-align:right}
+details{font-size:12px;line-height:1.65}
+summary{cursor:pointer;font-size:13px}
+.help{font-size:12px;line-height:1.7;color:#333;margin:0;padding-left:16px}
+kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font-size:11px}
+.tbl-wrap{overflow-x:auto}
+#camtools{display:flex;gap:4px;flex-wrap:wrap;margin-left:6px;padding-left:8px;border-left:2px solid #444}
+.cbig{font-size:30px;line-height:1.15;color:#1f4f8f;font-variant-numeric:tabular-nums}
+.checks{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:3px;font-size:12px}
+.checks li{display:flex;justify-content:space-between;gap:8px;padding:3px 6px;border:1px solid #888;background:#d6d6d6}
+.checks li span:last-child{text-align:right}
+.checks li.pass{background:#d4ead0;border-color:#3c8527}
+.checks li.fail{background:#f3d0cc;border-color:#a1000a;color:#7a0008}
+.checks small{color:#555}
+.rules{margin-top:8px}
+.rgrid{display:grid;grid-template-columns:1fr 110px;gap:5px 8px;align-items:center;font-size:12px;margin:8px 0}
+.rgrid input,.rgrid select{font:inherit;font-size:12px;padding:3px 5px;border:2px solid #000;background:#fff;color:#111;width:100%;min-width:0}
+.rgrid select.btn{color:#fff;background:var(--btn)}
+.sgbtns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+#suglist,.tips{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:12px;line-height:1.5}
+#suglist li{border-bottom:1px dashed #9a9a9a;padding-bottom:6px;display:grid;gap:3px}
+#suglist li:last-child{border:0}
+#suglist .btn{justify-self:start}
+.sg-meta{color:#444}.sg-meta b{color:#1f4f8f;font-weight:400}
+.tips li{padding:5px 7px;border-left:4px solid #3a5a8c;background:#d8dbe2}
+.tips li.bad{border-color:#a1000a;background:#f0d6d2}
+.tips li.warn{border-color:#9a7a10;background:#efe3b8}
+.tips li.muted{border:0;background:none}
+.tips.gen li{border-color:#777;background:#d2d2d2}
+.panel a{color:#1f4f8f}
+.btn.gold{background:#b8860b;margin-left:auto}
+.btn.gold:hover{background:#d39e1c}
+.btn.danger{background:#a1000a}
+#saved{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+#saved li{border-bottom:1px dashed #9a9a9a;padding-bottom:6px}
+#saved li:last-child{border:0}
+.sv-name{font-size:13px}.sv-meta{font-size:11px;color:#555;margin:2px 0 4px}
+.sv-btns{display:flex;gap:4px;flex-wrap:wrap}
+#doc{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.72);overflow:auto;
+  padding-block:max(16px,env(safe-area-inset-top,0px)) 24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.docwrap{max-width:960px;margin:0 auto;display:grid;gap:10px}
+.docbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--panel);color:var(--panel-ink);border:3px solid #000;box-shadow:inset 3px 3px 0 #fff,inset -3px -3px 0 #555;padding:10px 12px;position:sticky;top:0;z-index:2}
+.dn{display:flex;gap:6px;align-items:center;font-size:13px;flex:1 1 220px;min-width:0}
+.dn input{font:inherit;font-size:14px;padding:5px 7px;border:2px solid #000;flex:1;min-width:0;background:#fff;color:#111}
+#docmsg{width:100%;font-size:12px;color:#244d14}
+#doctext{width:100%;font:12px/1.5 ui-monospace,monospace}
+.paper{background:#fdfcf8;color:#1d1d1d;border:3px solid #000;padding:clamp(16px,4vw,36px);font-family:'Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif;line-height:1.6;min-width:0}
+.paper h2{font-family:var(--f-pixel);font-weight:400;font-size:clamp(22px,3vw,30px);margin:2px 0 4px;text-wrap:balance}
+.paper h3{font-family:var(--f-pixel);font-weight:400;font-size:19px;margin:28px 0 8px;padding-bottom:4px;border-bottom:2px solid #1d1d1d}
+.paper .eyebrow{font-size:12px;letter-spacing:.08em;color:#7a5c00}
+.paper .meta{font-size:13px;color:#555}
+.paper header.ph{background:none;border:0;padding:0;color:inherit}
+.ph{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-end}
+.kpis{display:flex;gap:16px;flex-wrap:wrap}
+.kpis div{display:grid;text-align:right}
+.kpis b{font-family:var(--f-pixel);font-weight:400;font-size:26px;color:#1f6f12;font-variant-numeric:tabular-nums}
+.kpis span{font-size:11px;color:#666}
+.lead{background:#fff3cd;border:2px solid #7a6420;padding:8px 10px;font-size:14px}
+.paper .bad{color:#a1000a}
+.opts{display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-size:13px;margin-bottom:8px}
+.opts input{width:70px;font:inherit;padding:3px 5px;border:1px solid #777;background:#fff;color:#111;color-scheme:light}
+.note{font-size:12px;color:#666}
+.bom{padding-left:18px;margin:6px 0 10px;font-size:14px}
+.tw{overflow-x:auto}
+.paper table{font-size:13px;min-width:520px}
+.paper th,.paper td{border-bottom:1px solid #ddd;padding:5px 6px}
+.paper td,.paper th{text-align:left;white-space:nowrap}
+.paper td.ids,.paper td:last-child{white-space:normal}
+.paper td.ids{text-align:left;color:#555}
+.paper figure{margin:10px 0;border:1px solid #ccc;background:#fff}
+.paper figure img{display:block;width:100%;height:auto}
+.paper figcaption{font-size:12px;color:#666;padding:4px 8px}
+.steps{padding-left:22px;display:grid;gap:8px}
+.steps p{margin:2px 0 0;font-size:14px}
+.foot{margin-top:24px}
+@media (prefers-reduced-motion: reduce){#toolname,#counter{transition:none}}
+</style>
+
+<header>
+  <h1>Timber Bridge 가상 실험실</h1>
+  <select class="btn" id="preset" aria-label="프리셋 불러오기">
+    <option value="">프리셋 불러오기…</option>
+    <option value="pratt">Pratt 트러스 (목재만)</option>
+    <option value="prattSteel">Pratt + 철근 하현재</option>
+    <option value="warren">Warren 트러스</option>
+    <option value="king">킹포스트 + 철근</option>
+    <option value="low">낮은 Pratt (h = 5 cm)</option>
+    <option value="empty">빈 캔버스</option>
+  </select>
+  <button class="btn" id="undo" type="button">되돌리기</button>
+  <button class="btn" id="clear" type="button">전체 지우기</button>
+  <button class="btn gold" id="savebtn" type="button">설계 저장 · 설계서</button>
+</header>
+<main>
+  <div id="stage">
+    <div id="viewbar">
+      <button class="tab on" type="button" data-view="side">측면<span class="k">Q</span></button>
+      <button class="tab" type="button" data-view="plan">위<span class="k">W</span></button>
+      <button class="tab" type="button" data-view="under">아래<span class="k">R</span></button>
+      <button class="tab" type="button" data-view="3d">3D<span class="k">E</span></button>
+      <div id="levels" hidden></div>
+      <div id="ptools" hidden>
+        <button class="btn sm" id="autobrace" type="button">이 높이에 X 브레이싱 채우기</button>
+        <button class="btn sm" id="clearlevel" type="button">이 높이 비우기</button>
+      </div>
+      <div id="camtools" hidden>
+        <button class="btn sm" type="button" data-cam="iso">비스듬히</button>
+        <button class="btn sm" type="button" data-cam="front">정면</button>
+        <button class="btn sm" type="button" data-cam="top">위에서</button>
+        <button class="btn sm" type="button" data-cam="bottom">아래에서</button>
+        <button class="btn sm" type="button" data-cam="end">끝에서</button>
+      </div>
+      <div id="vhint"></div>
+    </div>
+    <div id="viewport">
+      <canvas id="cv"></canvas>
+      <div id="gl"></div>
+      <div id="counter"></div>
+      <div id="toast" hidden></div>
+      <div id="toolname"></div>
+      <div id="tip" hidden></div>
+    </div>
+    <div id="hbwrap"><div id="hotbar"></div></div>
+  </div>
+  <aside>
+    <div class="panel">
+      <h2>예상 최대 하중 (다리 전체) <span class="pill idle" id="stat">—</span></h2>
+      <div class="pname" id="pname"></div>
+      <div class="big" id="kg">—</div>
+      <div class="sub" id="kgsub"></div>
+      <button class="btn go" id="test" type="button">하중 시험 시작 (Space)</button>
+    </div>
+    <div class="panel">
+      <h2>가장 먼저 깨지는 곳</h2>
+      <div class="cause" id="cause">—</div>
+    </div>
+    <div class="panel comp">
+      <h2>대회 모드 <span class="pill idle" id="cpill">—</span></h2>
+      <div class="sub" id="cscore-lbl">대회 점수</div>
+      <div class="cbig" id="cscore">—</div>
+      <div class="sub" id="cbasis"></div>
+      <ul class="checks" id="cchecks"></ul>
+      <details class="rules">
+        <summary>우리 대회 규칙 입력 (빈칸 = 제한 없음)</summary>
+        <div class="rgrid">
+          <label for="r-score">점수 기준</label><select class="btn" id="r-score"><option value="eff">하중 ÷ 무게 (효율)</option><option value="load">최대 하중</option></select>
+          <label for="r-weight">무게 상한 (g)</label><input id="r-weight" type="number" min="0" step="1" placeholder="예: 150">
+          <label for="r-defl">처짐 한계 (mm)</label><input id="r-defl" type="number" min="0" step="0.1" placeholder="예: 12.7">
+          <label for="r-sticks">각재 수 상한</label><input id="r-sticks" type="number" min="0" step="1" placeholder="예: 30">
+          <label for="r-stock">각재 한 개 길이 (cm)</label><input id="r-stock" type="number" min="10" step="1">
+          <label for="r-steel">철근 상한 (cm)</label><input id="r-steel" type="number" min="0" step="1" placeholder="예: 120">
+          <label for="r-wraps">고무줄 감기 상한 (회)</label><input id="r-wraps" type="number" min="0" step="1" placeholder="두 면 합계">
+          <label for="r-cap">인정 하중 상한 (kg)</label><input id="r-cap" type="number" min="0" step="1" placeholder="예: 50">
+        </div>
+        <p class="note">대회마다 규칙이 달라요. 처짐 ½인치(12.7 mm)에서 끝내는 대회, 무게·재료 개수를 제한하는 대회가 많아요. 받은 규정집 숫자를 넣으세요.</p>
+      </details>
+    </div>
+    <div class="panel">
+      <h2>개선 추천</h2>
+      <div class="sgbtns"><button class="btn sm" id="sugbtn" type="button">한 칸씩 바꿔 보기</button><button class="btn sm" id="tunebtn" type="button">자동으로 다듬기</button></div>
+      <ul id="suglist"><li class="muted">버튼을 누르면 고무줄·겹·철근을 하나씩 바꿔 대회 점수가 오르는 것을 찾아요.</li></ul>
+    </div>
+    <div class="panel">
+      <h2>대회 팁</h2>
+      <ul class="tips" id="ctips"></ul>
+      <details><summary>대회 준비 체크리스트</summary><ul class="tips gen" id="gtips"></ul>
+        <p class="note">참고한 대회 규정: <a href="https://studentsymposium.asce.org/midsouth/wp-content/uploads/sites/17/2025/01/Balsa-Bridge-Rules-and-Regulations.pdf" target="_blank" rel="noopener">ASCE Mid-South</a> · <a href="https://www.ncdot.gov/initiatives-policies/students-youth/model-bridge-competition/Documents/competition-guidelines.pdf" target="_blank" rel="noopener">NCDOT</a> · <a href="https://stem.ucf.edu/wp-content/uploads/2025/09/2025-2026-Balsa-Bridge-Contest-Guidelines.pdf" target="_blank" rel="noopener">UCF</a> · <a href="https://garrettsbridges.com/?p=3339" target="_blank" rel="noopener">Garrett's Bridges</a></p>
+      </details>
+    </div>
+    <div class="panel">
+      <h2>약한 곳 TOP 3</h2>
+      <ul id="weak"></ul>
+    </div>
+    <div class="panel">
+      <h2>다리 정보</h2>
+      <div class="row"><span>무게 (전체)</span><span id="wt">—</span></div>
+      <div class="row"><span>효율</span><span id="eff">—</span></div>
+      <div class="row"><span>파괴 직전 처짐</span><span id="defl">—</span></div>
+      <div class="row"><span>목재 길이 (전체)</span><span id="lw">—</span></div>
+      <div class="row"><span>철근 사용량 (전체)</span><span id="ls">—</span></div>
+      <div class="row"><span>고무줄 감기 (한 면)</span><span id="nr">—</span></div>
+      <div class="row"><span>횡지지 절점</span><span id="nb">—</span></div>
+    </div>
+    <div class="panel">
+      <h2>설정</h2>
+      <div class="sel-row"><label for="width">다리 폭 (앞·뒤 트러스 간격)</label>
+        <select class="btn" id="width"><option value="1">5 cm</option><option value="2">10 cm</option><option value="3">15 cm</option><option value="4">20 cm</option></select></div>
+      <label class="chk"><input type="checkbox" id="brace" checked> 횡브레이싱 효과 반영 (끄면 비교용)</label>
+      <label class="chk"><input type="checkbox" id="forces"> 부재력 보기 (파랑 인장 / 빨강 압축)</label>
+    </div>
+    <div class="panel">
+      <h2>저장한 설계</h2>
+      <ul id="saved"></ul>
+    </div>
+    <div class="panel">
+      <h2>시험 기록 <button class="btn sm" id="clearhist" type="button">비우기</button></h2>
+      <div class="tbl-wrap"><table><thead><tr><th>설계</th><th>kg</th><th>g</th><th>kg/g</th></tr></thead><tbody id="hist"></tbody></table></div>
+    </div>
+    <div class="panel">
+      <h2>사용법</h2>
+      <ul class="help">
+        <li><kbd>Q</kbd> 측면 · <kbd>W</kbd> 위 · <kbd>R</kbd> 아래 · <kbd>E</kbd> 3D 보기</li>
+        <li><kbd>1</kbd>–<kbd>4</kbd> 재료 → 점에서 점으로 <b>드래그</b>(또는 두 번 클릭)</li>
+        <li>측면: 트러스 한 면 (앞뒤 두 면에 똑같이 놓여요)</li>
+        <li>위·아래: 높이를 고르고 앞면 절점 ↔ 뒷면 절점을 이어 가로보·X 브레이싱 (아래 보기는 밑에서 올려다본 모습)</li>
+        <li><kbd>5</kbd> 고무줄 +1, <kbd>Shift</kbd>/우클릭 −1 · <kbd>6</kbd> 하중 · <kbd>7</kbd> 지우개</li>
+        <li><kbd>Space</kbd> 하중 시험 · <kbd>Ctrl</kbd>+<kbd>Z</kbd> 되돌리기 · <kbd>Esc</kbd> 그리기 취소</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <details>
+        <summary>역학 모델과 가정</summary>
+        <p>측면 트러스 한 면을 핀 절점 2D 트러스로 보고 직접강성법으로 풉니다. 앞·뒤 두 면이 똑같다고 보고 전체 하중 = 한 면 × 2. 자중은 무시합니다.</p>
+        <p><b>부재 강성</b> k = (L/EA + 1/(w<sub>a</sub>k<sub>w</sub>) + 1/(w<sub>b</sub>k<sub>w</sub>))<sup>−1</sup>, 고무줄 1회 k<sub>w</sub> = 150 N/mm.</p>
+        <p><b>파괴 판정</b> 목재 인장 σ<sub>t</sub>A · 목재 압축 min(σ<sub>c</sub>A, π²EI/L², π²EI/L<sub>out</sub>²) · 철근 인장 σ<sub>y</sub>A · 철근 압축 min(σ<sub>y</sub>A, π²EI/L²) · 절점 = 감기 수 × 60 N. 절점은 일직선으로 이어지는 같은 재료면 힘의 차이만, 압축은 지압 덕분에 50%만 옮깁니다.</p>
+        <p><b>횡지지와 L<sub>out</sub></b> 위 보기에서 가로재 2개와 현재 1구간이 삼각형을 이루면 그 꼭짓점 절점은 옆으로 안 움직인다고 봅니다(지점은 항상). L<sub>out</sub> = 일직선으로 이어진 목재를 따라 횡지지 절점 사이까지의 길이. 가로보만 있고 대각재가 없으면 평행사변형으로 찌그러지므로 지지가 안 됩니다. 가로재는 연직 하중에서 힘을 받지 않는다고 보고 파괴 판정에서 뺍니다.</p>
+        <p><b>재료</b> 목재 5×5 mm, E 10 GPa, σ<sub>t</sub> 60 MPa, σ<sub>c</sub> 35 MPa, 500 kg/m³, n겹이면 A·I ×n. 철근 Ø3 mm (A 7.07 mm²), E 200 GPa, σ<sub>y</sub> 250 MPa, 7,850 kg/m³. 고무줄 1회 0.3 g, 마찰 60 N.</p>
+        <p>선형 해석입니다. 붕괴 장면은 연출이에요. 값은 추정치라 절대값보다 설계안끼리 비교하는 데 쓰세요.</p>
+      </details>
+    </div>
+  </aside>
+</main>
+<div id="doc" hidden role="dialog" aria-modal="true" aria-labelledby="doctitle">
+  <div class="docwrap">
+    <div class="docbar">
+      <label class="dn"><span>설계 이름</span><input id="docname" maxlength="40"></label>
+      <button class="btn" id="docsave" type="button">이 이름으로 저장</button>
+      <button class="btn" id="doccopy" type="button">설계서 글로 복사</button>
+      <button class="btn" id="docclose" type="button">닫기 (Esc)</button>
+      <div id="docmsg"></div>
+      <textarea id="doctext" hidden rows="8" aria-label="설계서 글"></textarea>
+    </div>
+    <article class="paper" id="paper"></article>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>

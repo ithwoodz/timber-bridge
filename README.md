@@ -1,0 +1,81 @@
+# Timber Bridge 가상 실험실
+
+목재·철근·고무줄로 트러스 다리를 블록처럼 짓고, 버틸 수 있는 최대 하중(kg)과 가장 먼저 깨지는 곳을 가상으로 시험하는 웹 시뮬레이터.
+재료역학 timber bridge 실험에서 설계안을 미리 비교하고 발표 근거를 만드는 데 쓴다.
+
+## 실행
+
+빌드 도구 없이 `index.html` 하나로 돈다.
+
+- 파일을 브라우저로 열거나
+- GitHub Pages(Settings → Pages → Branch `main`, `/ (root)`)로 띄운다.
+
+3D 화면은 three.js r128 을 cdnjs 에서 불러온다. 인터넷이 없으면 3D 탭만 꺼지고 나머지는 동작한다.
+
+## 할 수 있는 것
+
+| 화면 | 하는 일 |
+|---|---|
+| 측면 (`Q`) | 측면 트러스 한 면을 짓는다. 앞·뒤 두 면에 똑같이 놓인다 |
+| 위 (`W`) · 아래 (`R`) | 높이를 골라 앞·뒤 트러스를 잇는 가로보와 X 브레이싱을 놓는다 |
+| 3D (`E`) | 돌려 보기(아래까지), 카메라 버튼, 지우개·고무줄 클릭 |
+
+- 핫바 `1`–`7`: 목재 1·2·3겹, 철근, 고무줄(절점 클릭 +1, Shift −1), 하중 위치, 지우개(끌어서 여러 개)
+- `Space` 하중 시험: 0 kg → 파괴까지 변형·여유율 색, 파괴 부재 깜빡임, 붕괴 연출
+- 결과: 최대 하중, 파괴 부재와 원인(인장 파단·좌굴·절점 미끄러짐), 처짐, 무게, 효율, 약한 곳 TOP 3
+- **대회 모드**: 우리 대회 규칙(무게 상한, 처짐 한계, 각재 수, 철근·고무줄 상한, 인정 하중 상한) 입력 → 규칙 점검과 대회 점수, 한 칸씩 바꿔 점수가 오르는 개선 추천, 자동 다듬기, 상황별 팁
+- **설계 저장 · 설계서**: 준비물(절단 목록, 필요한 각재 수), 측면도·평면도·3D 그림, 부재표, 절점표, 만드는 순서. 글로 복사 가능
+- 프리셋: Pratt, Pratt + 철근 하현재, Warren, 킹포스트 + 철근, 낮은 Pratt, 빈 캔버스
+
+설계·저장 목록·규칙은 브라우저(localStorage)에만 보관된다.
+
+## 역학 모델
+
+측면 트러스 한 면을 핀 절점 2D 트러스로 보고 직접강성법으로 푼다. 선형 해석이라 단위하중(1 N)에 대한 부재력을 한 번 구하고,
+모든 부재·절점의 "저항력 ÷ 단위하중당 힘" 중 최솟값을 파괴 하중으로 본다. 전체 하중 = 한 면 × 2, 자중 무시.
+
+- 부재 강성(고무줄 미끄러짐 포함, 직렬 스프링): `k = (L/EA + 1/(w_a·k_w) + 1/(w_b·k_w))⁻¹`
+- 목재 인장 `σt·A`, 목재 압축 `min(σc·A, π²EI/L², π²EI/L_out²)`, 철근 인장 `σy·A`, 철근 압축 `min(σy·A, π²EI/L²)`
+- 절점 미끄러짐: 감기 수 × 60 N. 일직선으로 이어지는 같은 재료는 힘의 차이만, 압축은 지압으로 50%만 반영
+- 횡지지: 위·아래 보기에서 가로재 2개와 현재 1구간이 삼각형을 이루면 그 절점은 평면 밖으로 안 움직인다고 본다(지점은 항상).
+  `L_out` = 일직선으로 이어진 목재를 따라 횡지지 절점 사이까지의 길이
+- 강성행렬이 특이하면 불안정(메커니즘)으로 판정
+
+| 재료 | 단면 | E | 강도 | 밀도 |
+|---|---|---|---|---|
+| 목재 n겹 | 5×5 mm, A = 25n mm², I = 52n mm⁴ | 10 GPa | σt 60 MPa, σc 35 MPa | 500 kg/m³ |
+| 철근 | Ø3 mm, A = 7.07 mm² | 200 GPa | σy 250 MPa | 7,850 kg/m³ |
+| 고무줄 1회 | — | k_w 150 N/mm | 마찰 60 N | 0.3 g |
+
+상수는 추정치다. 목재 강도와 고무줄 마찰은 실제 시험으로 보정해야 하고, 결과는 절대값보다 설계안끼리 비교하는 데 쓴다.
+큰 변형, 재료 비선형, 첫 파괴 뒤 하중 재분배, 3D 구조 해석, 가로재의 휨은 계산하지 않는다(붕괴 장면은 연출).
+
+## 구조
+
+```
+index.html           빌드 결과물 (이 파일 하나로 실행)
+build.sh             src/ 를 합쳐 index.html 생성
+src/shell.html       화면 마크업과 스타일
+src/engine.js        역학 엔진 (DOM 없음): 부재 추가·분할, 횡지지, 강성법 해석
+src/ui.js            프리셋, 2D 측면·위·아래 화면, 3D(three.js), 하중 시험, 입력
+src/comp.js          대회 모드: 규칙 점검, 점수, 개선 추천, 팁
+src/report.js        설계 저장과 설계서(준비물·도면·만드는 순서)
+src/start.js         시작 코드
+tools/check-engine.js  엔진 회귀 확인
+```
+
+## 고치고 확인하기
+
+```sh
+./build.sh                    # src/ 수정 후 index.html 다시 만들기
+node tools/check-engine.js    # Pratt > 낮은 Pratt, 브레이싱 있음 > 없음, 사각형 칸 = 불안정
+```
+
+## 대회 규칙 참고
+
+대회마다 경간, 무게 상한, 파괴 기준(부러짐 / 처짐 ½인치 등), 재료 개수 제한이 다르다. 점수는 대부분 "버틴 하중 ÷ 다리 무게".
+
+- [ASCE Mid-South Balsa Bridge Rules](https://studentsymposium.asce.org/midsouth/wp-content/uploads/sites/17/2025/01/Balsa-Bridge-Rules-and-Regulations.pdf)
+- [NCDOT Model Bridge Competition Guidelines](https://www.ncdot.gov/initiatives-policies/students-youth/model-bridge-competition/Documents/competition-guidelines.pdf)
+- [UCF Balsa Bridge Contest Guidelines](https://stem.ucf.edu/wp-content/uploads/2025/09/2025-2026-Balsa-Bridge-Contest-Guidelines.pdf)
+- [Garrett's Bridges (제작 팁)](https://garrettsbridges.com/?p=3339)
