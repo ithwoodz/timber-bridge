@@ -168,9 +168,10 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
   <h1>Timber Bridge 가상 실험실</h1>
   <select class="btn" id="preset" aria-label="프리셋 불러오기">
     <option value="">프리셋 불러오기…</option>
-    <option value="warrenStrong">Warren 고강도 (가장 강함)</option>
-    <option value="prattStrong">Pratt 고강도 (효율 최고)</option>
-    <option value="warren">Warren 트러스 (기본)</option>
+    <option value="pratt12Strong">Pratt 12칸 고강도 (가장 강함)</option>
+    <option value="prattLowStrong">Pratt h10 고강도 (효율 최고 · 처짐 큼)</option>
+    <option value="warrenStrong">Warren 고강도 (처짐 적음)</option>
+    <option value="prattStrong">Pratt 고강도</option>
     <option value="pratt">Pratt 트러스 (기본)</option>
     <option value="empty">빈 캔버스</option>
   </select>
@@ -274,6 +275,9 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
       <h2>설정</h2>
       <div class="sel-row"><label for="width">다리 폭 (앞·뒤 트러스 간격)</label>
         <span class="wbox"><input id="width" type="number" min="3" max="30" step="0.5" inputmode="decimal"> cm</span></div>
+      <div class="sel-row"><label for="ltype">하중 형태</label>
+        <select class="btn" id="ltype"><option value="udl">분포하중 (바닥에 고르게)</option><option value="point">집중하중 (추 하나)</option></select></div>
+      <div class="sel-row"><span id="lrange" class="muted"></span><button class="btn sm" id="lfull" type="button">다리 전체로</button></div>
       <label class="chk"><input type="checkbox" id="brace" checked> 횡브레이싱 효과 반영 (끄면 비교용)</label>
       <label class="chk"><input type="checkbox" id="forces"> 부재력 보기 (파랑 인장 / 빨강 압축)</label>
     </div>
@@ -300,6 +304,7 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
       <details>
         <summary>역학 모델과 가정</summary>
         <p>측면 트러스 한 면을 핀 절점 2D 트러스로 보고 직접강성법으로 풉니다. 앞·뒤 두 면이 똑같다고 보고 전체 하중 = 한 면 × 2. 자중은 무시합니다.</p>
+        <p><b>하중</b> 기본은 분포하중: 정한 구간(기본 바닥 0–60 cm)에 고르게 실은 하중을, 바닥판이 이웃 절점 사이를 단순 지지한다고 보고 지렛대 규칙으로 절점에 나눕니다. 지점 바로 위의 몫은 땅으로 갑니다. 설정에서 집중하중(추 하나)으로 바꿀 수 있어요.</p>
         <p><b>부재 강성</b> k = (L/EA + 1/(w<sub>a</sub>k<sub>w</sub>) + 1/(w<sub>b</sub>k<sub>w</sub>))<sup>−1</sup>, 고무줄 1회 k<sub>w</sub> = 150 N/mm.</p>
         <p><b>파괴 판정</b> 목재 인장 σ<sub>t</sub>A · 목재 압축 min(σ<sub>c</sub>A, π²EI/L², π²EI/L<sub>out</sub>²) · 철근 인장 σ<sub>y</sub>A · 철근 압축 min(σ<sub>y</sub>A, π²EI/L²) · 절점 = 감기 수 × 60 N. 절점은 일직선으로 이어지는 같은 재료면 힘의 차이만, 압축은 지압 덕분에 50%만 옮깁니다.</p>
         <p><b>횡지지와 L<sub>out</sub></b> 위 보기에서 가로재 2개와 현재 1구간이 삼각형을 이루면 그 꼭짓점 절점은 옆으로 안 움직인다고 봅니다(지점은 항상). L<sub>out</sub> = 일직선으로 이어진 목재를 따라 횡지지 절점 사이까지의 길이. 가로보만 있고 대각재가 없으면 평행사변형으로 찌그러지므로 지지가 안 됩니다. 가로재는 연직 하중에서 힘을 받지 않는다고 보고 파괴 판정에서 뺍니다.</p>

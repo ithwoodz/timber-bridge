@@ -96,7 +96,8 @@ function contextTips(r, ev) {
   const ls = levelsOf(S), top = ls[0];
   const topHasBrace = Object.values(S.plan).some(p => p.y === top && p.xa !== p.xb);
   if (top > 0 && nodesAtLevel(S, top).length > 1 && !topHasBrace) tips.push(['bad', `윗면(높이 ${top * 5} cm)은 압축을 받아 옆으로 휘어요. 가로보만 사다리처럼 두면 못 막아요. 위 보기에서 X 브레이싱을 넣으세요.`]);
-  if (r.warn) tips.push(['warn', '추를 걸 자리에 가로보가 없어요. 평평한 하중 받침을 만들면 추가 기울지 않아 한쪽 트러스에만 힘이 몰리는 걸 막아요.']);
+  if (r.warn) tips.push(['warn', '하중을 받는 절점 중 가로보가 없는 곳이 있어요. 바닥판이 가로보 위에 평평하게 얹혀야 하중이 앞뒤 트러스에 고르게 나뉘어요.']);
+  if (S.loadType !== 'point' && r.loads && r.loads.type === 'udl') { const u = r.loads; if (u.x1 - u.x0 < 12) tips.push(['tip', `하중을 ${u.x0 * 5}–${u.x1 * 5} cm 구간에만 올렸어요. 대회처럼 바닥 전체에 고르게 싣는다면 설정의 "다리 전체로"를 누르세요.`]); }
   const g = r.govern;
   if (g.type === 'joint') tips.push(['tip', `가장 약한 곳이 절점이에요. 고무줄 1회는 두 면 합쳐 0.6 g뿐이라, ${capLabel(g).split(' 고무줄')[0]}에 한 번 더 감는 게 무게 대비 가장 싼 보강이에요.`]);
   else { const e = r.elements[g.idx]; if (e.mode === '면외 좌굴') tips.push(['tip', '옆으로 휘어서 깨질 예정이에요. 겹을 늘리기 전에 그 높이에 X 브레이싱을 먼저 넣는 게 가벼워요.']); else if (e.mode.includes('좌굴')) tips.push(['tip', '압축재가 좌굴로 깨질 예정이에요. 길이를 반으로 나누면 버티는 힘이 4배(∝ 1/L²)라 겹을 늘리는 것보다 효과가 클 때가 많아요.']); }

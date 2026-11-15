@@ -99,6 +99,30 @@ function bracedNodes(m) {
   return set;
 }
 
+// 하중을 절점에 나눈다(합 = 1).
+// 분포하중: 바닥판이 이웃 절점 사이를 단순 지지한다고 보고, 각 구간에 실린 몫을 지렛대 규칙으로 양 끝 절점에 나눈다.
+// 지점 위에 실린 몫은 땅으로 바로 가서 부재에 힘을 주지 않는다.
+function loadPoints(m) {
+  const ns = structNodes(m);
+  if (m.loadType === 'point') return m.load && ns.has(m.load) ? { list: [[m.load, 1]], type: 'point' } : { list: [], msg: '하중(6) 도구로 측면 보기에서 하중을 걸 절점을 찍으세요.' };
+  const u = m.udl || { y: 0, x0: 0, x1: 12 };
+  const x0 = Math.min(u.x0, u.x1), x1 = Math.max(u.x0, u.x1);
+  const xs = [...ns.values()].filter(n => n.y === u.y).map(n => n.x).sort((a, b) => a - b);
+  if (!xs.length) return { list: [], msg: `분포하중을 받을 높이 ${u.y * 5} cm에 절점이 없어요. 하중(6) 도구로 바닥 높이의 절점 두 개를 이어 범위를 정하세요.` };
+  if (x1 - x0 <= 0) return { list: [], msg: '분포하중 범위 길이가 0이에요. 하중(6) 도구로 시작과 끝 절점을 이어 주세요.' };
+  const w = new Map(xs.map(x => [x, 0])), add = (x, v) => w.set(x, w.get(x) + v);
+  const first = xs[0], last = xs[xs.length - 1];
+  if (x0 < first) add(first, Math.min(x1, first) - x0);
+  if (x1 > last) add(last, x1 - Math.max(x0, last));
+  for (let k = 0; k < xs.length - 1; k++) {
+    const a = xs[k], b = xs[k + 1], lo = Math.max(a, x0), hi = Math.min(b, x1);
+    if (hi <= lo) continue;
+    const len = hi - lo, c = (lo + hi) / 2;
+    add(a, len * (b - c) / (b - a)); add(b, len * (c - a) / (b - a));
+  }
+  return { list: xs.filter(x => w.get(x) > 1e-12).map(x => [nk(x, u.y), w.get(x) / (x1 - x0)]), type: 'udl', x0, x1, y: u.y };
+}
+
 function solveLinear(K, F, n) {
   let maxDiag = 0;
   for (let i = 0; i < n; i++) maxDiag = Math.max(maxDiag, Math.abs(K[i][i]));
@@ -166,13 +190,17 @@ function analyze(m) {
     out.msg = sup[0] == null && sup[1] == null ? '양쪽 지점(0 cm, 60 cm)에 부재를 연결하세요.' : sup[0] == null ? '왼쪽 지점(0 cm)에 부재를 연결하세요.' : '오른쪽 지점(60 cm)에 부재를 연결하세요.';
     return out;
   }
-  const li = m.load ? idx.get(m.load) : null;
-  if (li == null) { out.status = 'noload'; out.msg = '하중(6) 도구로 측면 보기에서 하중을 걸 절점을 찍으세요.'; return out; }
-  if (li === sup[0] || li === sup[1]) { out.status = 'noload'; out.msg = '하중이 지점 바로 위에 있어요. 다리 중간으로 옮겨 주세요.'; return out; }
-  out.loadIdx = li;
-  const ln = nodes[li];
-  if (!Object.values(m.plan).some(p => p.y === ln.y && (p.xa === ln.x || p.xb === ln.x)))
-    out.warn = `하중점(${ln.x * 5} cm, 높이 ${ln.y * 5} cm)에 가로보가 없어요. 위 보기에서 이 높이에 가로보를 놓아야 추를 양쪽 트러스에 나눠 걸 수 있어요.`;
+  const lp = loadPoints(m);
+  if (!lp.list.length) { out.status = 'noload'; out.msg = lp.msg; return out; }
+  const loadW = new Map(lp.list.map(([k, w]) => [idx.get(k), w]));
+  const onSupport = i => i === sup[0] || i === sup[1];
+  const free_ = [...loadW].filter(([i]) => !onSupport(i));
+  if (!free_.length) { out.status = 'noload'; out.msg = lp.type === 'point' ? '하중이 지점 바로 위에 있어요. 다리 중간으로 옮겨 주세요.' : '하중이 모두 지점 바로 위에 실려 다리가 받는 힘이 없어요. 범위를 다리 가운데까지 넓히세요.'; return out; }
+  out.loads = lp; out.loadW = loadW;
+  out.loadIdx = free_.sort((a, b) => b[1] - a[1])[0][0];
+  const noBeam = free_.map(([i]) => nodes[i]).filter(n => !Object.values(m.plan).some(p => p.y === n.y && (p.xa === n.x || p.xb === n.x)));
+  if (noBeam.length)
+    out.warn = `하중을 받는 절점 ${noBeam.map(n => `(${n.x * 5}, ${n.y * 5})`).join(', ')} cm에 가로보가 없어요. 위·아래 보기에서 이 높이에 가로보를 놓아야 ${lp.type === 'point' ? '추를' : '바닥판 하중을'} 양쪽 트러스에 나눠 줄 수 있어요.`;
 
   // 평면 밖 좌굴 길이: 일직선으로 이어진 목재를 따라가다 횡지지 절점에서 멈춘다
   const woodAt = new Map();
@@ -215,7 +243,7 @@ function analyze(m) {
     if (!n.els.length) return;
     const e0 = out.elements[n.els[0]];
     if (!n.els.every(ei => Math.abs(e0.c * out.elements[ei].s - e0.s * out.elements[ei].c) < 1e-9)) return;
-    if (i === li && Math.abs(e0.c) > 1e-9) return;
+    if (loadW.has(i) && Math.abs(e0.c) > 1e-9) return;
     const px = -e0.s, py = e0.c;
     K[2 * i][2 * i] += kStab * px * px; K[2 * i][2 * i + 1] += kStab * px * py;
     K[2 * i + 1][2 * i] += kStab * px * py; K[2 * i + 1][2 * i + 1] += kStab * py * py;
@@ -223,7 +251,8 @@ function analyze(m) {
   const fixed = new Set([2 * sup[0], 2 * sup[0] + 1, 2 * sup[1] + 1]);
   const free = []; for (let d = 0; d < nd; d++) if (!fixed.has(d)) free.push(d);
   const Kr = free.map(r => Float64Array.from(free, c => K[r][c]));
-  const F = new Float64Array(free.length); F[free.indexOf(2 * li + 1)] = -1;
+  const F = new Float64Array(free.length);
+  for (const [i, w] of loadW) { const d = free.indexOf(2 * i + 1); if (d >= 0) F[d] -= w; } // 합계 1 N, 아래로
   const sol = solveLinear(Kr, F, free.length);
   if (sol.singular) {
     out.status = 'unstable';
@@ -272,7 +301,7 @@ function analyze(m) {
   out.Pface = out.govern.cap;
   out.Ptotal = 2 * out.Pface;
   out.kg = out.Ptotal / G_ACC;
-  out.defl = -nodes[li].uy * out.Pface;
+  out.defl = Math.max(0, ...nodes.map(n => -n.uy)) * out.Pface; // 가장 많이 처진 절점
   out.maxU = Math.max(...nodes.map(n => Math.hypot(n.ux, n.uy)));
   return out;
 }

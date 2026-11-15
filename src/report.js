@@ -84,7 +84,7 @@ function memberLine(g, A, B, wood, steel) {
 function drawElevation(d) {
   const xs = d.nodes.map(n => n.x * CM), ys = d.nodes.map(n => n.y * CM);
   const x0 = Math.min(0, ...xs), x1 = Math.max(60, ...xs), y0 = Math.min(0, ...ys), y1 = Math.max(5, ...ys);
-  const Wd = 1100, padX = 70, padT = 60, padB = 110, sc = (Wd - 2 * padX) / (x1 - x0), Hd = Math.round((y1 - y0) * sc + padT + padB);
+  const Wd = 1100, padX = 70, padT = 90, padB = 110, sc = (Wd - 2 * padX) / (x1 - x0), Hd = Math.round((y1 - y0) * sc + padT + padB);
   const [c, g] = paperCanvas(Wd, Hd), P = (x, y) => [padX + (x - x0) * sc, padT + (y1 - y) * sc];
   g.strokeStyle = '#e4ecf7'; g.lineWidth = 1;
   for (let x = Math.ceil(x0 / CM) * CM; x <= x1; x += CM) { const [a] = P(x, 0); g.beginPath(); g.moveTo(a, padT - 10); g.lineTo(a, Hd - padB + 10); g.stroke(); }
@@ -104,7 +104,14 @@ function drawElevation(d) {
     g.fillStyle = '#b00020'; g.font = 'bold 15px sans-serif'; g.textAlign = 'right'; g.fillText(d.name.get(k), X - 8, Y - 8);
     g.fillStyle = '#7a5c00'; g.font = '11px sans-serif'; g.textAlign = 'left'; g.fillText('×' + getWraps(S, k), X + 7, Y - 7);
   }
-  if (S.load && d.name.has(S.load)) {
+  if (S.loadType !== 'point' && S.udl) {
+    const u = S.udl, xa = Math.min(u.x0, u.x1) * CM, xb = Math.max(u.x0, u.x1) * CM, A = P(xa, u.y * CM), B = P(xb, u.y * CM), top = A[1] - 34;
+    g.strokeStyle = '#c62828'; g.fillStyle = '#c62828'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(A[0], top); g.lineTo(B[0], top); g.stroke();
+    const n = Math.max(2, Math.round((xb - xa) / 2.5));
+    for (let i = 0; i <= n; i++) { const X = A[0] + (B[0] - A[0]) * i / n; g.beginPath(); g.moveTo(X, top); g.lineTo(X, A[1] - 9); g.stroke(); g.beginPath(); g.moveTo(X, A[1] - 7); g.lineTo(X - 4, A[1] - 15); g.lineTo(X + 4, A[1] - 15); g.closePath(); g.fill(); }
+    g.font = 'bold 14px sans-serif'; g.textAlign = 'center'; g.fillText(`분포하중 w (${xa}–${xb} cm 구간에 고르게)`, (A[0] + B[0]) / 2, top - 8);
+  } else if (S.load && d.name.has(S.load)) {
     const [lx, ly] = Pk(S.load), [X, Y] = P(lx * CM, ly * CM);
     g.strokeStyle = '#c62828'; g.fillStyle = '#c62828'; g.lineWidth = 3; g.beginPath(); g.moveTo(X, Y + 12); g.lineTo(X, Y + 52); g.stroke();
     g.beginPath(); g.moveTo(X, Y + 10); g.lineTo(X - 7, Y + 22); g.lineTo(X + 7, Y + 22); g.closePath(); g.fill();
@@ -177,7 +184,8 @@ function buildSteps(d, cuts, pack) {
     const br = lv.map(y => { const a = d.plans.filter(q => q.p.y === y && q.kind !== '가로보').map(q => q.id); return a.length ? `높이 ${y * CM} cm ${join(a)}` : ''; }).filter(Boolean);
     if (br.length) steps.push(['X 브레이싱', br.join(', ') + '를 대각선으로 놓아 칸마다 삼각형을 만듭니다. 위에서 봤을 때 다리가 평행사변형으로 찌그러지지 않으면 됩니다.']);
   } else steps.push(['두 트러스 세우기', `두 트러스를 ${Wcm()} cm 간격으로 세웁니다. 이 설계에는 가로재가 없어 옆으로 쓰러지기 쉬워요. 위 보기에서 가로보와 X 브레이싱을 넣는 걸 권해요.`]);
-  if (S.load && d.name.has(S.load)) { const [lx, ly] = Pk(S.load); steps.push(['받침과 하중', `왼쪽 끝 ${d.name.get(nk(0, 0)) || ''}과 오른쪽 끝 ${d.name.get(nk(12, 0)) || ''}을 60 cm 간격의 받침 위에 올립니다. 추는 절점 ${d.name.get(S.load)} (가로 ${lx * CM} cm, 높이 ${ly * CM} cm)의 가로보 가운데에 겁니다.`]); }
+  if (S.loadType !== 'point' && S.udl) { const u = S.udl; steps.push(['받침과 하중', `왼쪽 끝 ${d.name.get(nk(0, 0)) || ''}과 오른쪽 끝 ${d.name.get(nk(12, 0)) || ''}을 60 cm 간격의 받침 위에 올립니다. 높이 ${u.y * CM} cm의 가로보 위에 바닥판을 깔고, 하중은 ${Math.min(u.x0, u.x1) * CM}–${Math.max(u.x0, u.x1) * CM} cm 구간에 고르게 싣습니다(모래주머니·추를 같은 간격으로 늘어놓기). 한쪽으로 쏠리면 계산보다 약해져요.`]); }
+  else if (S.load && d.name.has(S.load)) { const [lx, ly] = Pk(S.load); steps.push(['받침과 하중', `왼쪽 끝 ${d.name.get(nk(0, 0)) || ''}과 오른쪽 끝 ${d.name.get(nk(12, 0)) || ''}을 60 cm 간격의 받침 위에 올립니다. 추는 절점 ${d.name.get(S.load)} (가로 ${lx * CM} cm, 높이 ${ly * CM} cm)의 가로보 가운데에 겁니다.`]); }
   if (d.r.status === 'ok') steps.push(['시험 전 점검', `두 트러스가 같은 모양인지, 절점이 벌어지지 않았는지 확인합니다. 시뮬레이터가 꼽은 약한 곳: ${d.r.ranked.slice(0, 3).map(c => capLabel(c)).join(' / ')}. 예상 최대 하중 ${d.r.kg.toFixed(1)} kg.`]);
   if (pack.tooLong) steps.push(['주의: 긴 부재', `${pack.tooLong}개 부재가 각재 한 개(${docOpt.stock} cm)보다 깁니다. 두 개를 겹쳐 이어 붙이거나 중간에 절점을 넣어 나누세요.`]);
   return steps;

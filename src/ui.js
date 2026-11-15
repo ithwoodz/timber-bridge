@@ -1,7 +1,7 @@
 /* ───────────────── 모델·프리셋 ───────────────── */
 const CM = 5;                                  // 격자 1칸 = 5 cm
 const MATMAP = { wood1: { wood: 1 }, wood2: { wood: 2 }, wood3: { wood: 3 }, steel: { steel: true } };
-function blankModel() { return { segs: {}, plan: {}, wraps: {}, load: nk(6, 0), width: 2, bracingOn: true, name: '빈 캔버스' }; }
+function blankModel() { return { segs: {}, plan: {}, wraps: {}, loadType: 'udl', udl: { y: 0, x0: 0, x1: 12 }, load: nk(6, 0), width: 2, bracingOn: true, name: '빈 캔버스' }; }
 function setPlan(m, y, xa, xb, mat) {
   const k = planKey(y, xa, xb);
   const p = m.plan[k] || (m.plan[k] = { y, xa, xb, wood: 0, steel: false });
@@ -38,8 +38,9 @@ function warrenList() {
   for (let x = 0; x < 12; x += 2) L.push([x, 0, x + 1, 3, 'wood1'], [x + 1, 3, x + 2, 0, 'wood1']);
   return L;
 }
-// 고강도 프리셋: 가장 약한 곳(절점·부재)을 함께 한 단계씩 보강하기를 더 이상 안 될 때까지 반복한 뒤,
-// 하중이 줄지 않는 범위에서 겹·고무줄을 덜어 낸 결과. 부재 = [x1, y1, x2, y2, 목재 겹, 철근]
+// 고강도 프리셋: 분포하중(바닥 전체 0–60 cm)에서 가장 약한 곳(절점·부재)을 함께 한 단계씩 보강하기를
+// 더 이상 안 될 때까지 반복한 뒤, 하중이 줄지 않는 범위에서 겹·고무줄을 덜어 낸 결과.
+// 부재 = [x1, y1, x2, y2, 목재 겹, 철근], 감기 수는 3회가 아닌 곳만 적는다(최소 2회).
 function buildFull(name, members, wraps) {
   const m = blankModel(); m.name = name;
   for (const [x1, y1, x2, y2, wood, steel] of members) {
@@ -50,14 +51,19 @@ function buildFull(name, members, wraps) {
   const ls = levelsOf(m); autoBrace(m, 0); if (ls[0] !== 0) autoBrace(m, ls[0]);
   return m;
 }
-const STRONG_PRATT = [[0,0,2,0,1,0],[2,0,4,0,1,0],[4,0,6,0,1,0],[6,0,8,0,1,0],[8,0,10,0,1,0],[10,0,12,0,1,0],[2,3,4,3,2,0],[4,3,6,3,2,0],[6,3,8,3,2,0],[8,3,10,3,2,0],[0,0,2,3,3,0],[12,0,10,3,3,0],[2,0,2,3,1,0],[4,0,4,3,2,0],[6,0,6,3,1,0],[8,0,8,3,2,0],[10,0,10,3,1,0],[2,3,4,0,1,0],[4,3,6,0,1,0],[10,3,8,0,1,0],[8,3,6,0,1,0]];
-const STRONG_PRATT_W = { '6,0': 8, '4,3': 8, '4,0': 8, '2,3': 8, '8,0': 8, '8,3': 8, '10,3': 8, '0,0': 5, '12,0': 5, '2,0': 2, '10,0': 2, '6,3': 2 };
-const STRONG_WARREN = [[0,0,2,0,1,0],[2,0,4,0,1,0],[4,0,6,0,1,0],[6,0,8,0,1,0],[8,0,10,0,1,0],[10,0,12,0,1,0],[1,3,3,3,1,0],[3,3,5,3,2,0],[5,3,7,3,2,0],[7,3,9,3,2,0],[9,3,11,3,1,0],[0,0,1,3,3,0],[1,3,2,0,1,0],[2,0,3,3,3,0],[3,3,4,0,1,0],[4,0,5,3,3,0],[5,3,6,0,1,0],[6,0,7,3,1,0],[7,3,8,0,3,0],[8,0,9,3,1,0],[9,3,10,0,3,0],[10,0,11,3,1,0],[11,3,12,0,3,0]];
-const STRONG_WARREN_W = { '10,0': 8, '11,3': 8, '4,0': 8, '3,3': 8, '6,0': 8, '5,3': 8, '2,0': 8, '1,3': 8, '8,0': 8, '9,3': 8, '7,3': 8, '12,0': 4, '0,0': 4 };
+const S_PRATT12P3 = [[0,0,1,0,1,0],[1,0,2,0,1,0],[2,0,3,0,1,0],[3,0,4,0,1,0],[4,0,5,0,1,0],[5,0,6,0,1,0],[6,0,7,0,1,0],[7,0,8,0,1,0],[8,0,9,0,1,0],[9,0,10,0,1,0],[10,0,11,0,1,0],[11,0,12,0,1,0],[1,3,2,3,1,0],[2,3,3,3,1,0],[3,3,4,3,2,0],[4,3,5,3,2,0],[5,3,6,3,2,0],[6,3,7,3,2,0],[7,3,8,3,2,0],[8,3,9,3,2,0],[9,3,10,3,1,0],[10,3,11,3,1,0],[0,0,1,3,3,0],[12,0,11,3,3,0],[1,0,1,3,1,0],[2,0,2,3,2,0],[3,0,3,3,2,0],[4,0,4,3,1,0],[5,0,5,3,1,0],[6,0,6,3,1,0],[7,0,7,3,1,0],[8,0,8,3,1,0],[9,0,9,3,2,0],[10,0,10,3,2,0],[11,0,11,3,1,0],[1,3,2,0,1,0],[2,3,3,0,1,0],[3,3,4,0,1,0],[4,3,5,0,1,0],[5,3,6,0,1,0],[11,3,10,0,1,0],[10,3,9,0,1,0],[9,3,8,0,1,0],[8,3,7,0,1,0],[7,3,6,0,1,0]];
+const S_PRATT12P3_W = {'0,0':5,'1,0':2,'2,0':8,'3,0':7,'4,0':5,'6,0':2,'8,0':5,'9,0':7,'10,0':8,'11,0':2,'12,0':5,'1,3':8,'2,3':7,'3,3':5,'5,3':2,'6,3':2,'7,3':2,'9,3':5,'10,3':7,'11,3':8};
+const S_PRATT2 = [[0,0,2,0,1,0],[2,0,4,0,1,0],[4,0,6,0,1,0],[6,0,8,0,1,0],[8,0,10,0,1,0],[10,0,12,0,1,0],[2,2,4,2,2,0],[4,2,6,2,2,0],[6,2,8,2,2,0],[8,2,10,2,2,0],[0,0,2,2,3,0],[12,0,10,2,3,0],[2,0,2,2,1,0],[4,0,4,2,1,0],[6,0,6,2,1,0],[8,0,8,2,1,0],[10,0,10,2,1,0],[2,2,4,0,1,0],[4,2,6,0,1,0],[10,2,8,0,1,0],[8,2,6,0,1,0]];
+const S_PRATT2_W = {'0,0':8,'2,0':4,'4,0':7,'8,0':7,'10,0':4,'12,0':8,'2,2':7,'6,2':2,'10,2':7};
+const S_WARREN3 = [[0,0,2,0,1,0],[2,0,4,0,1,0],[4,0,6,0,1,0],[6,0,8,0,1,0],[8,0,10,0,1,0],[10,0,12,0,1,0],[1,3,3,3,1,0],[3,3,5,3,2,0],[5,3,7,3,2,0],[7,3,9,3,2,0],[9,3,11,3,1,0],[0,0,1,3,3,0],[1,3,2,0,1,0],[2,0,3,3,2,0],[3,3,4,0,1,0],[4,0,5,3,1,0],[5,3,6,0,1,0],[6,0,7,3,1,0],[7,3,8,0,1,0],[8,0,9,3,1,0],[9,3,10,0,2,0],[10,0,11,3,1,0],[11,3,12,0,3,0]];
+const S_WARREN3_W = {'0,0':4,'2,0':8,'4,0':5,'6,0':2,'8,0':5,'10,0':8,'12,0':4,'1,3':8,'3,3':5,'5,3':2,'7,3':2,'9,3':5,'11,3':8};
+const S_PRATT3 = [[0,0,2,0,1,0],[2,0,4,0,1,0],[4,0,6,0,1,0],[6,0,8,0,1,0],[8,0,10,0,1,0],[10,0,12,0,1,0],[2,3,4,3,2,0],[4,3,6,3,2,0],[6,3,8,3,2,0],[8,3,10,3,2,0],[0,0,2,3,3,0],[12,0,10,3,3,0],[2,0,2,3,1,0],[4,0,4,3,1,0],[6,0,6,3,1,0],[8,0,8,3,1,0],[10,0,10,3,1,0],[2,3,4,0,1,0],[4,3,6,0,1,0],[10,3,8,0,1,0],[8,3,6,0,1,0]];
+const S_PRATT3_W = {'0,0':5,'4,0':5,'6,0':2,'8,0':5,'12,0':5,'2,3':5,'4,3':2,'6,3':2,'8,3':2,'10,3':5};
 const PRESETS = {
-  warrenStrong: () => buildFull('Warren 고강도', STRONG_WARREN, STRONG_WARREN_W),
-  prattStrong: () => buildFull('Pratt 고강도', STRONG_PRATT, STRONG_PRATT_W),
-  warren: () => build('Warren 트러스 (기본)', warrenList()),
+  pratt12Strong: () => buildFull('Pratt 12칸 고강도', S_PRATT12P3, S_PRATT12P3_W),
+  prattLowStrong: () => buildFull('Pratt h10 고강도', S_PRATT2, S_PRATT2_W),
+  warrenStrong: () => buildFull('Warren 고강도', S_WARREN3, S_WARREN3_W),
+  prattStrong: () => buildFull('Pratt 고강도', S_PRATT3, S_PRATT3_W),
   pratt: () => build('Pratt 트러스 (기본)', prattList(3, false)),
   empty: () => blankModel()
 };
@@ -78,7 +84,7 @@ const TOOLS = [
   { id: 'wood3', label: '목재 3겹', icon: ICON.wood(3) },
   { id: 'steel', label: '철근 Ø3 mm', icon: ICON.steel() },
   { id: 'rubber', label: '고무줄: 절점 클릭 +1 · Shift/우클릭 −1', icon: ICON.rubber() },
-  { id: 'load', label: '하중 위치 (측면 보기에서)', icon: ICON.load() },
+  { id: 'load', label: '하중: 분포는 시작·끝 절점을 드래그, 집중은 절점 클릭 (측면 보기)', icon: ICON.load() },
   { id: 'erase', label: '지우개 (철근이 겹쳐 있으면 철근부터)', icon: ICON.erase() }
 ];
 const VIEWS = { side: '측면', plan: '위', '3d': '3D' };
@@ -135,6 +141,8 @@ function critHTML(c) {
 }
 function updatePanel() {
   const r = R, ok = r && r.status === 'ok';
+  $('lrange').textContent = loadSummary() + (S.loadType === 'point' ? '' : ' · 6번 도구로 범위 드래그');
+  $('lfull').hidden = S.loadType === 'point';
   renderComp();
   $('pname').textContent = S.name;
   $('wt').textContent = r.weight.toFixed(1) + ' g';
@@ -152,7 +160,7 @@ function updatePanel() {
     return;
   }
   $('kg').textContent = r.kg.toFixed(1) + ' kg';
-  $('kgsub').textContent = `한 면 ${r.Pface.toFixed(0)} N × 2면 = ${r.Ptotal.toFixed(0)} N`;
+  $('kgsub').textContent = `한 면 ${r.Pface.toFixed(0)} N × 2면 = ${r.Ptotal.toFixed(0)} N · ${loadSummary()}`;
   $('cause').innerHTML = critHTML(r.govern) + (r.warn ? `<div class="warn">⚠ ${r.warn}</div>` : '');
   $('eff').textContent = `${(r.kg / r.weight).toFixed(3)} kg/g (자기 무게의 ${(r.kg * 1000 / r.weight).toFixed(0)}배)`;
   $('defl').textContent = r.defl.toFixed(1) + ' mm';
@@ -307,6 +315,7 @@ function drawSide(disp, Pnow, flash) {
     bar2D(PS(a[0], a[1], 0), PS(b[0], b[1], W), { ...st, w: st.w * 0.75 }, 0.45);
   }
   for (const n of R.nodes) { const [x, y] = nodeDisp(n.k, disp); const [X, Y] = PS(x, y, W); band2D(X, Y, n.w, '#f5c518', false, 0.3); }
+  drawLoadSide(disp, Pnow != null ? (Pnow * 2 / G_ACC).toFixed(1) + ' kg' : null, Pnow != null ? Pnow / R.Pface : null);
   supportsSide(0);
   // 앞면 트러스
   for (const e of els) {
@@ -336,20 +345,60 @@ function drawSide(disp, Pnow, flash) {
     const n = R.nodes[R.mechNode], [X, Y] = PS(n.x * CM, n.y * CM), t = (Math.sin(performance.now() / 160) + 1) / 2;
     ctx.strokeStyle = `rgba(255,30,30,${.5 + .5 * t})`; ctx.lineWidth = 3; ctx.strokeRect(X - 10 - 4 * t, Y - 10 - 4 * t, 20 + 8 * t, 20 + 8 * t);
   }
-  drawLoadSide(disp, Pnow != null ? (Pnow * 2 / G_ACC).toFixed(1) : null);
 }
-function drawLoadSide(disp, label) {
-  if (!S.load || !R.nodeIndex.has(S.load)) return;
-  const W = Wcm(), [x, y] = nodeDisp(S.load, disp);
-  const top = PS(x, y - 4.5, W / 2), bw = scale * 5, bh = scale * 3.6;
-  ctx.strokeStyle = '#3b2c1e'; ctx.lineWidth = 2;
-  for (const z of [0, W]) { const p = PS(x, y, z); ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(top[0], top[1]); ctx.stroke(); }
-  const d = scale * 1.6;
-  quad([[top[0] - bw / 2, top[1]], [top[0] - bw / 2 + d, top[1] - d], [top[0] + bw / 2 + d, top[1] - d], [top[0] + bw / 2, top[1]]], '#8d949c', '#222');
-  quad([[top[0] + bw / 2, top[1]], [top[0] + bw / 2 + d, top[1] - d], [top[0] + bw / 2 + d, top[1] + bh - d], [top[0] + bw / 2, top[1] + bh]], '#3f444a', '#222');
-  ctx.fillStyle = '#5a5f66'; ctx.fillRect(top[0] - bw / 2, top[1], bw, bh); ctx.strokeStyle = '#222'; ctx.strokeRect(top[0] - bw / 2, top[1], bw, bh);
-  ctx.fillStyle = '#fff'; ctx.font = `${Math.max(11, scale * 1.3)}px DotGothic16, sans-serif`; ctx.textAlign = 'center';
-  ctx.fillText(label != null ? label : 'P', top[0], top[1] + bh * 0.7);
+// 하중을 그릴 블록 목록 (2D·3D·붕괴 공용).
+// 분포하중 = 바닥판 위에 5 cm 간격으로 고르게 놓인 추, 집중하중 = 절점에 매단 추 하나.
+// frac: 하중 시험 중 0→1 (추가 점점 높아진다). 평소엔 null
+function loadBlocks(disp, frac) {
+  const W = Wcm();
+  if (S.loadType === 'point') {
+    if (!S.load || !structNodes(S).has(S.load)) return [];
+    const [x, y] = nodeDisp(S.load, disp);
+    return [{ x, y: y - 9, z: W / 2, w: 6, h: 5, d: 6, hang: true, top: [x, y] }];
+  }
+  const u = S.udl; if (!u) return [];
+  const xs = nodesAtLevel(S, u.y); if (!xs.length) return [];
+  const x0 = Math.min(u.x0, u.x1) * CM, x1 = Math.max(u.x0, u.x1) * CM; if (x1 <= x0) return [];
+  const pts = xs.map(x => nodeDisp(nk(x, u.y), disp));
+  const deckY = xc => {
+    if (xc <= pts[0][0]) return pts[0][1];
+    for (let i = 0; i < pts.length - 1; i++) if (xc <= pts[i + 1][0]) { const t = (xc - pts[i][0]) / ((pts[i + 1][0] - pts[i][0]) || 1); return pts[i][1] + t * (pts[i + 1][1] - pts[i][1]); }
+    return pts[pts.length - 1][1];
+  };
+  const n = Math.max(1, Math.round((x1 - x0) / CM)), bw = (x1 - x0) / n, h = 1.6 + 3.4 * (frac == null ? 0.3 : frac);
+  const out = [];
+  for (let i = 0; i < n; i++) { const xc = x0 + bw * (i + .5), yd = deckY(xc) + 0.7; out.push({ x: xc, y: yd + h / 2, z: W / 2, w: bw * 0.88, h, d: Math.max(2, W - 1.5) }); }
+  out.deck = { x0, x1, ya: deckY(x0), yb: deckY(x1), y: (deckY(x0) + deckY(x1)) / 2 };
+  return out;
+}
+function udlText() { const u = S.udl || { x0: 0, x1: 12, y: 0 }; return `분포하중 ${Math.min(u.x0, u.x1) * CM}–${Math.max(u.x0, u.x1) * CM} cm`; }
+function shadowText(t, x, y, size) { ctx.font = `${size}px DotGothic16, sans-serif`; ctx.textAlign = 'center'; ctx.fillStyle = '#000'; ctx.fillText(t, x + 1.5, y + 1.5); ctx.fillStyle = '#fff'; ctx.fillText(t, x, y); }
+function drawLoadSide(disp, label, frac) {
+  const bl = loadBlocks(disp, frac); if (!bl.length) return;
+  const W = Wcm(), fs = Math.max(11, scale * 1.3);
+  if (bl[0].hang) {
+    const b = bl[0], [x, y] = b.top;
+    const top = PS(x, y - 4.5, W / 2), bw = scale * 5, bh = scale * 3.6;
+    ctx.strokeStyle = '#3b2c1e'; ctx.lineWidth = 2;
+    for (const z of [0, W]) { const p = PS(x, y, z); ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(top[0], top[1]); ctx.stroke(); }
+    const d = scale * 1.6;
+    quad([[top[0] - bw / 2, top[1]], [top[0] - bw / 2 + d, top[1] - d], [top[0] + bw / 2 + d, top[1] - d], [top[0] + bw / 2, top[1]]], '#8d949c', '#222');
+    quad([[top[0] + bw / 2, top[1]], [top[0] + bw / 2 + d, top[1] - d], [top[0] + bw / 2 + d, top[1] + bh - d], [top[0] + bw / 2, top[1] + bh]], '#3f444a', '#222');
+    ctx.fillStyle = '#5a5f66'; ctx.fillRect(top[0] - bw / 2, top[1], bw, bh); ctx.strokeStyle = '#222'; ctx.strokeRect(top[0] - bw / 2, top[1], bw, bh);
+    shadowText(label != null ? label : 'P', top[0], top[1] + bh * 0.7, fs);
+    return;
+  }
+  // 바닥판(앞·뒤 트러스 사이) + 그 위에 고르게 놓인 추
+  const dk = bl.deck;
+  quad([PS(dk.x0, dk.ya + .35, 0), PS(dk.x1, dk.yb + .35, 0), PS(dk.x1, dk.yb + .35, W), PS(dk.x0, dk.ya + .35, W)], 'rgba(176,132,78,.6)', 'rgba(60,40,20,.7)');
+  for (const b of bl) {
+    const z0 = b.z - b.d / 2, z1 = b.z + b.d / 2, L = b.x - b.w / 2, Rr = b.x + b.w / 2, T_ = b.y + b.h / 2, B_ = b.y - b.h / 2;
+    quad([PS(L, T_, z0), PS(Rr, T_, z0), PS(Rr, T_, z1), PS(L, T_, z1)], '#9aa1a8', '#222');
+    quad([PS(Rr, T_, z0), PS(Rr, T_, z1), PS(Rr, B_, z1), PS(Rr, B_, z0)], '#3f444a', '#222');
+    quad([PS(L, T_, z0), PS(Rr, T_, z0), PS(Rr, B_, z0), PS(L, B_, z0)], '#5a5f66', '#222');
+  }
+  const mid = bl[Math.floor(bl.length / 2)], tp = PS(mid.x, mid.y + mid.h / 2 + 2.5, mid.z);
+  shadowText(label != null ? label : udlText(), tp[0], tp[1], fs);
 }
 
 function scenePlan() {
@@ -402,12 +451,22 @@ function drawPlan(disp, Pnow, flash) {
       if (R.braced.has(n.k) && Pnow == null) { ctx.fillStyle = '#fff'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; const s = 4, yy = (view === 'under' ? !z : z) ? Y - 15 : Y + 7; ctx.beginPath(); ctx.moveTo(X, yy); ctx.lineTo(X + s, yy + s); ctx.lineTo(X, yy + 2 * s); ctx.lineTo(X - s, yy + s); ctx.closePath(); ctx.fill(); ctx.stroke(); }
     }
   }
-  if (S.load && R.nodeIndex.has(S.load)) {
-    const [x] = nodeDisp(S.load, disp), [X, Y] = PP(x, W / 2), b = scale * 5;
+  const bl = loadBlocks(disp, Pnow != null ? Pnow / R.Pface : null), fsz = Math.max(11, scale * 1.2);
+  if (bl.length && bl[0].hang) {
+    const [X, Y] = PP(bl[0].x, W / 2), b = scale * 5;
     ctx.fillStyle = '#5a5f66'; ctx.fillRect(X - b / 2, Y - b / 2, b, b); ctx.fillStyle = '#8d949c'; ctx.fillRect(X - b / 2, Y - b / 2, b, b * .2);
     ctx.strokeStyle = '#222'; ctx.lineWidth = 2; ctx.strokeRect(X - b / 2, Y - b / 2, b, b);
-    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = `${Math.max(11, scale * 1.2)}px DotGothic16, sans-serif`;
-    ctx.fillText(Pnow != null ? (Pnow * 2 / G_ACC).toFixed(1) : 'P', X, Y + b * .25);
+    shadowText(Pnow != null ? (Pnow * 2 / G_ACC).toFixed(1) : 'P', X, Y + b * .25, fsz);
+  } else if (bl.length) {
+    const on = S.udl.y === level, A = PP(bl.deck.x0, 0.6), B = PP(bl.deck.x1, W - 0.6);
+    const x = Math.min(A[0], B[0]), y = Math.min(A[1], B[1]), w = Math.abs(B[0] - A[0]), h = Math.abs(B[1] - A[1]);
+    ctx.globalAlpha = on ? 1 : 0.45;
+    ctx.fillStyle = 'rgba(90,95,102,.55)'; ctx.fillRect(x, y, w, h);
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1;
+    for (let k = -h; k < w; k += 10) { ctx.beginPath(); ctx.moveTo(x + k, y + h); ctx.lineTo(x + k + h, y); ctx.stroke(); }
+    ctx.restore(); ctx.strokeStyle = '#222'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
+    shadowText(Pnow != null ? (Pnow * 2 / G_ACC).toFixed(1) + ' kg' : `${udlText()} (높이 ${S.udl.y * CM} cm)`, x + w / 2, y + h / 2 + 4, fsz);
+    ctx.globalAlpha = 1;
   }
 }
 function drawPieces2D() {
@@ -416,8 +475,9 @@ function drawPieces2D() {
     const h = qRot(p.q, [p.len / 2, 0, 0]);
     const a = [p.p[0] - h[0], p.p[1] - h[1], p.p[2] - h[2]], b = [p.p[0] + h[0], p.p[1] + h[1], p.p[2] + h[2]];
     if (p.kind === 'load') {
-      const [X, Y] = isPlanView() ? PP(p.p[0], p.p[2]) : PS(p.p[0], p.p[1], p.p[2]), s = scale * 5;
-      ctx.fillStyle = '#5a5f66'; ctx.fillRect(X - s / 2, Y - s / 2, s, s * .75); ctx.strokeStyle = '#222'; ctx.strokeRect(X - s / 2, Y - s / 2, s, s * .75); continue;
+      const [X, Y] = isPlanView() ? PP(p.p[0], p.p[2]) : PS(p.p[0], p.p[1], p.p[2]), dm = p.dims || [6, 5, 6];
+      const w = dm[0] * scale, h = (isPlanView() ? dm[2] : dm[1]) * scale;
+      ctx.fillStyle = p.deck ? 'rgba(176,132,78,.8)' : '#5a5f66'; ctx.fillRect(X - w / 2, Y - h / 2, w, h); ctx.strokeStyle = '#222'; ctx.lineWidth = 1; ctx.strokeRect(X - w / 2, Y - h / 2, w, h); continue;
     }
     const st = p.crit ? { ...baseStyle(p.kind, p.n), col: '#ff3b2f', side: '#9e1f17' } : baseStyle(p.kind, p.n);
     if (isPlanView()) bar2D(PP(a[0], a[2]), PP(b[0], b[2]), st, p.p[2] > 0.1 && p.p[2] < Wcm() - .1 ? .8 : 1);
@@ -442,6 +502,17 @@ function draw2D() {
       ctx.fillStyle = '#fff'; ctx.font = '12px DotGothic16, sans-serif'; ctx.textAlign = 'center'; ctx.fillText((Math.hypot(x2 - x1, y2 - y1) * CM).toFixed(1) + ' cm', (A[0] + B[0]) / 2, (A[1] + B[1]) / 2 - 9);
     }
     if (startNode) { const [x, y] = Pk(startNode), [X, Y] = PS(x * CM, y * CM); ctx.fillStyle = '#fff'; ctx.fillRect(X - 4, Y - 4, 8, 8); }
+    if (loadStart) {
+      const [x1, y1] = Pk(loadStart), A = PS(x1 * CM, y1 * CM);
+      ctx.fillStyle = '#ffb000'; ctx.fillRect(A[0] - 5, A[1] - 5, 10, 10);
+      if (hover && hover !== loadStart) {
+        const [x2, y2] = Pk(hover), ok = y2 === y1, B = PS(x2 * CM, y1 * CM);
+        ctx.strokeStyle = ok ? 'rgba(255,176,0,.95)' : 'rgba(255,60,60,.9)'; ctx.lineWidth = 3; ctx.setLineDash([6, 4]);
+        ctx.beginPath(); ctx.moveTo(A[0], A[1] - 14); ctx.lineTo(B[0], B[1] - 14); ctx.stroke(); ctx.setLineDash([]);
+        for (let t = 0; t <= 1.0001; t += 1 / Math.max(1, Math.abs(x2 - x1) * 2)) { const X = A[0] + (B[0] - A[0]) * t; ctx.beginPath(); ctx.moveTo(X, A[1] - 14); ctx.lineTo(X, A[1] - 3); ctx.stroke(); }
+        shadowText(ok ? `분포하중 ${Math.min(x1, x2) * CM}–${Math.max(x1, x2) * CM} cm` : '같은 높이의 절점을 고르세요', (A[0] + B[0]) / 2, A[1] - 22, 12);
+      }
+    }
   } else {
     const pos = k => { const [x, f] = k.split(':').map(Number); return PP(x * CM, f * Wcm()); };
     if (hover) { const [X, Y] = pos(hover); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(X - 7, Y - 7, 14, 14); }
@@ -560,9 +631,10 @@ function rebuild3D() {
     o.plain = new THREE.MeshLambertMaterial({ color: 0xffffff });
   }
   for (const n of (R ? R.nodes : [])) for (const face of [0, 1]) add(T.box, T.mats.band, { band: n.k, face });
-  if (S.load && R && R.nodeIndex.has(S.load)) {
-    add(T.box, T.mats.iron, { load: true });
-    for (const face of [0, 1]) add(T.box, T.mats.rope, { rope: face });
+  const bl0 = R ? loadBlocks(0, null) : [];
+  if (bl0.length) {
+    if (bl0[0].hang) { add(T.box, T.mats.iron, { load: 0 }); for (const face of [0, 1]) add(T.box, T.mats.rope, { rope: face }); }
+    else { add(T.box, T.mats.wood, { deck: true }); bl0.forEach((b, i) => add(T.box, T.mats.iron, { load: i })); }
     const c = document.createElement('canvas'); c.width = 256; c.height = 64;
     const st = new THREE.CanvasTexture(c); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: st, depthTest: false }));
     sp.scale.set(24, 6, 1); T.bridge.add(sp); T.meshes.push({ mesh: sp, label: true, canvas: c, tex: st });
@@ -593,7 +665,8 @@ function barDims(kind, n) { return kind === 'wood' ? [1.0, 0.8 * n] : [0.55, 0.5
 function update3D(disp, Pnow, flash) {
   if (!T) return;
   const W = Wcm(), bars = barList(disp); let bi = 0;
-  const lp = S.load && R && R.nodeIndex.has(S.load) ? nodeDisp(S.load, disp) : null;
+  const bl = R ? loadBlocks(disp, Pnow != null && R.status === 'ok' ? Pnow / R.Pface : null) : [];
+  const lp = bl.length ? (bl[0].hang ? bl[0].top : [bl[Math.floor(bl.length / 2)].x, bl[Math.floor(bl.length / 2)].y]) : null;
   for (const o of T.meshes) {
     if (o.bar) {
       const b = bars[bi++]; if (!b) { o.mesh.visible = false; continue; }
@@ -614,10 +687,17 @@ function update3D(disp, Pnow, flash) {
         o.plain.color.set(isCritNode(o.band, flash) ? (Math.floor(performance.now() / 90) % 2 ? '#fff' : '#ff1a1a') : ratioCol(n.joint.demand * Pnow / n.joint.R));
         o.mesh.material = o.plain;
       } else o.mesh.material = o.base;
-    } else if (o.load && lp) { o.mesh.visible = true; o.mesh.position.set(lp[0], lp[1] - 9, W / 2); o.mesh.scale.set(6, 5, 6); o.mesh.quaternion.set(0, 0, 0, 1); }
+    } else if (o.load != null) {
+      const b = bl[o.load]; o.mesh.visible = !!b;
+      if (b) { o.mesh.position.set(b.x, b.y, b.z); o.mesh.scale.set(b.w, b.h, b.d); o.mesh.quaternion.set(0, 0, 0, 1); }
+    } else if (o.deck) {
+      const dk = bl.deck; o.mesh.visible = !!dk;
+      if (dk) placeBox(o.mesh, [dk.x0, dk.ya + .35, W / 2], [dk.x1, dk.yb + .35, W / 2], 0.4, W + 1);
+    }
     else if (o.rope != null && lp) { o.mesh.visible = true; placeBox(o.mesh, [lp[0], lp[1], o.rope * W], [lp[0], lp[1] - 6.5, W / 2], 0.3, 0.3); }
     else if (o.label && lp) {
-      o.mesh.visible = true; o.mesh.position.set(lp[0], lp[1] - 16, W / 2);
+      o.mesh.visible = true;
+      if (bl[0].hang) o.mesh.position.set(lp[0], lp[1] - 16, W / 2); else { const mb = bl[Math.floor(bl.length / 2)]; o.mesh.position.set(mb.x, mb.y + mb.h / 2 + 5, W / 2); }
       const txt = Pnow != null ? (Pnow * 2 / G_ACC).toFixed(1) + ' kg' : (R.status === 'ok' ? '최대 ' + R.kg.toFixed(1) + ' kg' : 'P');
       if (o.txt !== txt) { o.txt = txt; const g = o.canvas.getContext('2d'); g.clearRect(0, 0, 256, 64); g.font = '34px DotGothic16, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#000'; g.fillText(txt, 130, 46); g.fillStyle = '#fff'; g.fillText(txt, 127, 43); o.tex.needsUpdate = true; }
     }
@@ -630,7 +710,7 @@ function collapse3D() {
     const p = o.piece; if (!p) { o.mesh.visible = false; continue; }
     o.mesh.visible = true;
     o.mesh.position.set(p.p[0], p.p[1], p.p[2]); o.mesh.quaternion.set(p.q[0], p.q[1], p.q[2], p.q[3]);
-    if (p.kind === 'load') o.mesh.scale.set(6, 5, 6);
+    if (p.kind === 'load') o.mesh.scale.set(...(p.dims || [6, 5, 6]));
     else { const [t, d] = barDims(p.kind, p.n); o.mesh.scale.set(Math.max(p.len, .01), t, d); }
     if (p.crit) { o.plain.color.set('#ff3b2f'); o.mesh.material = o.plain; } else if (o.plain) o.mesh.material = o.base;
   }
@@ -687,9 +767,14 @@ function startCollapse() {
       pieces.push(halves[1]); // 3D 에서는 한 조각만 메시를 갖는다
     } else { const pc = mk(b, mid, len, near ? 40 : 12, false); pieces.push(pc); if (meshBars[i]) meshBars[i].piece = pc; }
   });
-  if (S.load && r.nodeIndex.has(S.load)) {
-    const lp = nodeDisp(S.load, disp), pc = { kind: 'load', p: [lp[0], lp[1] - 9, Wcm() / 2], q: [0, 0, 0, 1], v: [0, -10, 0], w: [0, 0, (rand() - .5) * 2], len: 0 };
-    pieces.push(pc); if (T) { const o = T.meshes.find(o => o.load); if (o) o.piece = pc; }
+  const bl = loadBlocks(disp, 1);
+  bl.forEach((b, i) => {
+    const pc = { kind: 'load', dims: [b.w, b.h, b.d], p: [b.x, b.y, b.z], q: [0, 0, 0, 1], v: [(rand() - .5) * 10, -5 - rand() * 10, (rand() - .5) * 4], w: [0, 0, (rand() - .5) * 3], len: 0 };
+    pieces.push(pc); if (T) { const o = T.meshes.find(o => o.load === i); if (o) o.piece = pc; }
+  });
+  if (bl.deck) {
+    const dk = bl.deck, pc = { kind: 'load', deck: true, dims: [dk.x1 - dk.x0, 0.4, Wcm() + 1], p: [(dk.x0 + dk.x1) / 2, dk.y + .35, Wcm() / 2], q: [0, 0, 0, 1], v: [0, -6, 0], w: [(rand() - .5) * .4, 0, (rand() - .5) * .8], len: 0 };
+    pieces.push(pc); if (T) { const o = T.meshes.find(o => o.deck); if (o) o.piece = pc; }
   }
   mode = 'collapse'; anim.t2 = performance.now(); anim.last = anim.t2;
 }
@@ -786,14 +871,16 @@ cv.addEventListener('pointerdown', e => {
   }
   if (tool === 'load') {
     if (view !== 'side') { toast('하중 위치는 측면 보기에서 정해요.'); return; }
-    if (!k || !R.nodeIndex.has(k)) { toast('부재가 연결된 점에만 하중을 걸 수 있어요.'); return; }
-    snapshot(); S.load = k; changed(); return;
+    if (!k || !R.nodeIndex.has(k)) { toast('부재가 연결된 절점을 고르세요.'); return; }
+    if (S.loadType === 'point') { snapshot(); S.load = k; changed(); return; }
+    if (loadStart && loadStart !== k) { setUdl(loadStart, k); loadStart = null; return; }
+    loadStart = k; dragMoved = false; cv.setPointerCapture(e.pointerId); dirty = true; return;
   }
 });
 cv.addEventListener('pointermove', e => {
   const [px_, py_] = toLocal(e);
   const k = view === 'side' ? snapSide(px_, py_) : snapPlan(px_, py_);
-  if (k !== hover) { hover = k; if (startNode && k && k !== startNode) dragMoved = true; }
+  if (k !== hover) { hover = k; const st = startNode || loadStart; if (st && k && k !== st) dragMoved = true; }
   hoverItem = (tool in MATS && startNode) ? null : itemAt(px_, py_);
   if (erasing && mode === 'build') eraseItem(hoverItem);
   if (mode === 'build') dirty = true;
@@ -802,6 +889,11 @@ cv.addEventListener('pointermove', e => {
 cv.addEventListener('pointercancel', endErase);
 cv.addEventListener('pointerup', e => {
   if (erasing) { endErase(); return; }
+  if (tool === 'load' && loadStart) {
+    const [px_, py_] = toLocal(e), k = snapSide(px_, py_);
+    if (k && k !== loadStart && dragMoved) { setUdl(loadStart, k); loadStart = null; }
+    return;
+  }
   if (!(tool in MATS) || !startNode) return;
   const [px_, py_] = toLocal(e), k = view === 'side' ? snapSide(px_, py_) : snapPlan(px_, py_);
   if (k && k !== startNode && dragMoved) { view === 'side' ? placeSide(startNode, k) : placePlan(startNode, k); startNode = null; dirty = true; }
@@ -818,7 +910,8 @@ function showTip(px_, py_) {
     const n = R.nodes[R.nodeIndex.get(nodeKey)];
     html = `<b>절점 (${cm(n.x)}, ${cm(n.y)}) cm</b><br>고무줄 ${n.w}회 · 미끄러짐 저항 ${n.w * MAT.band.slip} N` +
       (ok && n.joint ? `<br>파괴 하중일 때 필요 ${(n.joint.demand * R.Pface).toFixed(0)} N · 사용률 ${(n.joint.demand * R.Pface / n.joint.R * 100).toFixed(0)}%` : '') +
-      `<br>${R.braced.has(n.k) ? '횡지지됨 (평면 밖으로 안 움직임)' : '횡지지 없음'}`;
+      `<br>${R.braced.has(n.k) ? '횡지지됨 (평면 밖으로 안 움직임)' : '횡지지 없음'}` +
+      (R.loadW && R.loadW.has(R.nodeIndex.get(n.k)) ? `<br>하중 몫 ${(R.loadW.get(R.nodeIndex.get(n.k)) * 100).toFixed(0)}%${(n.x === 0 || n.x === 12) && n.y === 0 ? ' (지점으로 바로 감)' : ''}` : '');
   } else if (hoverItem && hoverItem.type === 'seg') {
     const els = R.elements.filter(e => e.key === hoverItem.key);
     html = els.map(e => {
@@ -849,7 +942,7 @@ function buildHotbar() {
   });
 }
 function setTool(id) {
-  tool = id; startNode = null; buildHotbar();
+  tool = id; startNode = null; loadStart = null; buildHotbar();
   const n = $('toolname'); n.textContent = TOOLS.find(t => t.id === id).label; n.style.opacity = 1;
   clearTimeout(setTool.h); setTool.h = setTimeout(() => n.style.opacity = 0, 1600);
   cv.style.cursor = id === 'erase' ? 'not-allowed' : 'crosshair'; dirty = true;
@@ -885,17 +978,39 @@ document.addEventListener('keydown', e => {
   if (e.key >= '1' && e.key <= '7') setTool(TOOLS[+e.key - 1].id);
   else if (e.key === ' ') { e.preventDefault(); startTest(); }
   else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); doUndo(); }
-  else if (e.key === 'Escape') { startNode = null; dirty = true; }
+  else if (e.key === 'Escape') { startNode = null; loadStart = null; dirty = true; }
   else if (!e.ctrlKey && !e.metaKey && !e.altKey && ['q', 'w', 'r', 'e'].includes(e.key.toLowerCase())) setView({ q: 'side', w: 'plan', r: 'under', e: '3d' }[e.key.toLowerCase()]);
 });
 function doUndo() { if (mode !== 'build' || !undoStack.length) return; S = JSON.parse(undoStack.pop()); syncControls(); changed(false); }
-function syncControls() { $('brace').checked = S.bracingOn; $('width').value = String(+(S.width * CM).toFixed(1)); }
+function syncControls() { $('brace').checked = S.bracingOn; $('width').value = String(+(S.width * CM).toFixed(1)); $('ltype').value = S.loadType || 'udl'; }
+let loadStart = null;
+function setUdl(a, b) {
+  const [x1, y1] = Pk(a), [x2, y2] = Pk(b);
+  if (y1 !== y2) { toast('분포하중의 시작과 끝은 같은 높이의 절점이어야 해요.'); return; }
+  snapshot(); S.udl = { y: y1, x0: Math.min(x1, x2), x1: Math.max(x1, x2) }; changed();
+  toast(`${udlText()}, 높이 ${y1 * CM} cm 에 고르게 올렸어요.`);
+}
+function loadSummary() {
+  if (S.loadType === 'point') { const [x, y] = Pk(S.load || nk(6, 0)); return `집중하중 · 절점 (${x * CM}, ${y * CM}) cm`; }
+  const u = S.udl || { y: 0 }; return `${udlText()} · 높이 ${u.y * CM} cm`;
+}
 $('undo').onclick = doUndo;
 $('clear').onclick = () => { if (mode !== 'build') return; snapshot(); S.segs = {}; S.plan = {}; S.wraps = {}; S.name = '사용자 설계'; changed(false); toast('모두 지웠어요. 되돌리기(Ctrl+Z)로 복구할 수 있어요.'); };
 $('preset').onchange = e => { const v = e.target.value; e.target.value = ''; e.target.blur(); if (!v || mode !== 'build') return; snapshot(); const keepW = S.width; S = PRESETS[v](); S.width = keepW; syncControls(); changed(false); };
 $('test').onclick = startTest;
 $('brace').onchange = e => { snapshot(); S.bracingOn = e.target.checked; changed(); };
 $('forces').onchange = e => { showForces = e.target.checked; update3D(0, null, false); dirty = true; };
+$('ltype').onchange = e => {
+  if (mode !== 'build') return;
+  snapshot(); S.loadType = e.target.value;
+  if (S.loadType === 'point' && (!S.load || !structNodes(S).has(S.load))) S.load = structNodes(S).has(nk(6, 0)) ? nk(6, 0) : (R && R.loadIdx >= 0 ? R.nodes[R.loadIdx].k : nk(6, 0));
+  changed(); e.target.blur();
+};
+$('lfull').onclick = () => {
+  if (mode !== 'build') return;
+  const ls = levelsOf(S), y = ls.includes(0) ? 0 : (ls[ls.length - 1] ?? 0);
+  snapshot(); S.udl = { y, x0: 0, x1: 12 }; changed(); toast(`${udlText()}, 높이 ${y * CM} cm (다리 전체)에 고르게 올렸어요.`);
+};
 $('width').onchange = e => {
   const v = Math.max(3, Math.min(30, Math.round((+e.target.value || 10) * 2) / 2)); // cm, 0.5 단위
   e.target.value = v; if (v === Wcm()) return;
