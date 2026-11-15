@@ -177,3 +177,55 @@ for (const [id, key] of [['r-score', 'score'], ['r-minw', 'minWidth'], ['r-minl'
 }
 $('gtips').innerHTML = GENERAL_TIPS.map(t => `<li>${t}</li>`).join('');
 syncRules();
+
+/* ───────────────── 재료 상수 보정: 실제로 부숴 본 값으로 바꾼다 ───────────────── */
+const MAT_KEY = 'tb-lab-3d-mat';
+const MAT_FIELDS = [ // [입력 id, 이름, 단위, 읽기, 쓰기, 기본값]
+  ['c-slip', '고무줄 1회 마찰 저항', 'N', () => MAT.band.slip, v => MAT.band.slip = v, MAT.band.slip],
+  ['c-kw', '고무줄 1회 강성', 'N/mm', () => MAT.band.kw, v => MAT.band.kw = v, MAT.band.kw],
+  ['c-ft', '목재 인장 강도', 'MPa', () => MAT.wood.ft, v => MAT.wood.ft = v, MAT.wood.ft],
+  ['c-fc', '목재 압축 강도', 'MPa', () => MAT.wood.fc, v => MAT.wood.fc = v, MAT.wood.fc],
+  ['c-E', '목재 탄성계수', 'GPa', () => MAT.wood.E / 1000, v => MAT.wood.E = v * 1000, MAT.wood.E / 1000],
+  ['c-fy', '철물 항복 강도', 'MPa', () => MAT.steel.fy, v => MAT.steel.fy = v, MAT.steel.fy]
+];
+try { const saved = JSON.parse(localStorage.getItem(MAT_KEY)) || {}; for (const [id, , , , set] of MAT_FIELDS) if (saved[id] > 0) set(+saved[id]); } catch (e) {}
+const matCalibrated = () => MAT_FIELDS.some(([, , , get, , def]) => Math.abs(get() - def) > 1e-9);
+function storeMat() { try { localStorage.setItem(MAT_KEY, JSON.stringify(Object.fromEntries(MAT_FIELDS.map(([id, , , get]) => [id, get()])))); } catch (e) {} }
+function renderMat() {
+  for (const [id, , , get] of MAT_FIELDS) { const el = $(id); if (el && document.activeElement !== el) el.value = +get().toFixed(3); }
+  const on = matCalibrated();
+  $('cpill2').className = 'pill ' + (on ? 'bad' : 'idle'); $('cpill2').textContent = on ? '보정값 사용 중' : '기본값';
+}
+function matChanged(msg) { storeMat(); renderMat(); changed(false); if (msg) toast(msg); }
+for (const [id, name, unit, , set] of MAT_FIELDS) {
+  $(id).addEventListener('change', e => {
+    const v = +e.target.value;
+    if (!(v > 0)) { toast(`${name}은(는) 0보다 커야 해요.`); renderMat(); return; }
+    set(v); matChanged(`${name}을(를) ${v} ${unit}(으)로 바꿨어요. 모든 결과가 이 값으로 다시 계산돼요.`);
+  });
+}
+$('c-reset').onclick = () => { for (const [, , , , set, def] of MAT_FIELDS) set(def); matChanged('재료 상수를 기본값으로 되돌렸어요.'); };
+// 고무줄 시험: 막대 두 개를 고무줄로 감아 묶고 한쪽에 추를 매달아, 미끄러질 때의 무게를 잰다
+$('c-band-apply').onclick = () => {
+  const w = +$('c-band-w').value, kg = +$('c-band-kg').value;
+  if (!(w >= 1) || !(kg > 0)) { toast('감은 횟수(1 이상)와 미끄러질 때 무게(kg)를 넣으세요.'); return; }
+  const slip = kg * G_ACC / w;
+  MAT.band.slip = slip; matChanged(`고무줄 1회 마찰 저항 = ${kg} kg × 9.81 ÷ ${w}회 = ${slip.toFixed(1)} N 으로 맞췄어요.`);
+};
+// 시제품 시험: 지금 화면의 설계를 실제로 만들어 부쉈을 때 버틴 무게로, 가장 먼저 깨지는 쪽(절점이면 고무줄, 부재면 목재 강도)을 비례해서 맞춘다
+$('c-proto-apply').onclick = () => {
+  const kg = +$('c-proto-kg').value;
+  if (!(kg > 0)) { toast('시제품이 실제로 버틴 무게(kg)를 넣으세요.'); return; }
+  const r = analyze(S);
+  if (r.status !== 'ok') { toast('지금 설계가 안정해야 맞출 수 있어요.'); return; }
+  const k = kg / r.kg;
+  if (r.govern.type === 'joint') { MAT.band.slip *= k; matChanged(`예상 ${r.kg.toFixed(1)} kg → 실제 ${kg} kg. 절점이 먼저 깨지는 설계라 고무줄 마찰 저항을 ×${k.toFixed(3)} (${MAT.band.slip.toFixed(1)} N)로 맞췄어요.`); }
+  else {
+    const e = r.elements[r.govern.idx];
+    if (e.kind === 'steel') { MAT.steel.fy *= k; matChanged(`철물이 먼저 깨지는 설계라 철물 항복 강도를 ×${k.toFixed(3)}로 맞췄어요.`); }
+    else if (e.f > 0) { MAT.wood.ft *= k; matChanged(`목재 인장이 먼저 깨지는 설계라 목재 인장 강도를 ×${k.toFixed(3)} (${MAT.wood.ft.toFixed(1)} MPa)로 맞췄어요.`); }
+    else if (e.mode.includes('좌굴')) { MAT.wood.E *= k; matChanged(`좌굴이 먼저 오는 설계라 목재 탄성계수를 ×${k.toFixed(3)} (${(MAT.wood.E / 1000).toFixed(2)} GPa)로 맞췄어요.`); }
+    else { MAT.wood.fc *= k; matChanged(`목재 압축이 먼저 깨지는 설계라 목재 압축 강도를 ×${k.toFixed(3)} (${MAT.wood.fc.toFixed(1)} MPa)로 맞췄어요.`); }
+  }
+};
+renderMat();

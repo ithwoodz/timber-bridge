@@ -105,6 +105,8 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
 .wbox{display:flex;align-items:center;gap:4px;font-size:13px}
 .wbox input{width:64px;font:inherit;font-size:13px;padding:4px 6px;border:2px solid #000;background:#fff;color:#111;color-scheme:light}
 .water{font-size:14px;color:#1f4f8f;margin:2px 0}
+.calib .rgrid{grid-template-columns:1fr 90px}
+.calib details{margin-top:6px}
 .checks li.soft{background:#efe3b8;border-color:#9a7a10;color:#4d3d00}
 .assign{font-size:12px;line-height:1.6}
 .assign table{font-size:12px}
@@ -315,6 +317,37 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
           <tr><td>12/10</td><td>실험 평가(동영상 촬영) + 개인 보고서(A4 1장, 12 pt, 기여도 상호평가)</td></tr>
         </tbody></table>
         <p>구조 성능 40 · 재료 활용 20 · 구조 이해도 20 · 참여 20. 계획 발표 자료에는 "설계 저장 · 설계서"의 도면·부재력·예상 하중을 쓰세요.</p>
+      </details>
+    </div>
+    <div class="panel calib">
+      <h2>재료 상수 보정 <span class="pill idle" id="cpill2">기본값</span></h2>
+      <p class="note">기본값은 추정치라 실제보다 크게 나올 수 있어요. 재료를 받으면 몇 개 부숴 보고 아래에 넣으세요. 모든 결과가 다시 계산돼요.</p>
+      <details open>
+        <summary>고무줄 접합 시험으로 맞추기</summary>
+        <p class="note">각재 두 개를 고무줄로 감아 묶고, 한쪽에 물병·추를 매달아 미끄러지는 순간의 무게를 재세요.</p>
+        <div class="rgrid">
+          <label for="c-band-w">감은 횟수 (회)</label><input id="c-band-w" type="number" min="1" step="1" value="3">
+          <label for="c-band-kg">미끄러질 때 무게 (kg)</label><input id="c-band-kg" type="number" min="0" step="0.1" placeholder="예: 2.5">
+        </div>
+        <button class="btn sm" id="c-band-apply" type="button">고무줄 마찰에 적용</button>
+      </details>
+      <details>
+        <summary>시제품 결과로 맞추기</summary>
+        <p class="note">지금 화면의 설계를 실제로 만들어 부쉈다면 버틴 무게를 넣으세요. 가장 먼저 깨지는 쪽의 값(절점이면 고무줄, 부재면 목재 강도·탄성계수)을 비례로 맞춰요.</p>
+        <div class="rgrid"><label for="c-proto-kg">실제 버틴 무게 (kg)</label><input id="c-proto-kg" type="number" min="0" step="0.1" placeholder="예: 6"></div>
+        <button class="btn sm" id="c-proto-apply" type="button">이 결과로 맞추기</button>
+      </details>
+      <details>
+        <summary>값 직접 바꾸기</summary>
+        <div class="rgrid">
+          <label for="c-slip">고무줄 1회 마찰 저항 (N)</label><input id="c-slip" type="number" min="0" step="0.5">
+          <label for="c-kw">고무줄 1회 강성 (N/mm)</label><input id="c-kw" type="number" min="0" step="1">
+          <label for="c-ft">목재 인장 강도 (MPa)</label><input id="c-ft" type="number" min="0" step="1">
+          <label for="c-fc">목재 압축 강도 (MPa)</label><input id="c-fc" type="number" min="0" step="1">
+          <label for="c-E">목재 탄성계수 (GPa)</label><input id="c-E" type="number" min="0" step="0.1">
+          <label for="c-fy">철물 항복 강도 (MPa)</label><input id="c-fy" type="number" min="0" step="5">
+        </div>
+        <button class="btn sm" id="c-reset" type="button">기본값으로 되돌리기</button>
       </details>
     </div>
     <div class="panel">

@@ -206,7 +206,7 @@ function renderDoc() {
   const date = new Date().toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' });
   const cutRows = (g, mat) => g.map(e => `<tr><td>${mat}</td><td>${f1(e.len)} cm</td><td>${e.count}개</td><td class="ids">${[...e.ids].join(', ')}</td></tr>`).join('');
   $('paper').innerHTML = `
-  <header class="ph"><div><div class="eyebrow">Timber Bridge 설계서</div><h2 id="doctitle">${esc(S.name)}</h2><div class="meta">${date} · 경간 60 cm · 폭 ${Wcm()} cm · 높이 ${d.top * CM} cm</div></div>
+  <header class="ph"><div><div class="eyebrow">Timber Bridge 설계서</div><h2 id="doctitle">${esc(S.name)}</h2><div class="meta">${date} · 경간 60 cm · 폭 ${Wcm()} cm · 높이 ${d.top * CM} cm · 재료 상수 ${matCalibrated() ? `보정값(고무줄 ${MAT.band.slip.toFixed(1)} N/회, 목재 σt ${MAT.wood.ft} · σc ${MAT.wood.fc} MPa, E ${(MAT.wood.E / 1000).toFixed(1)} GPa)` : '기본값(추정)'}</div></div>
     <div class="kpis"><div><b>${ok ? r.kg.toFixed(1) : '—'}</b><span>예상 최대 하중 kg</span></div><div><b>${r.weight.toFixed(1)}</b><span>무게 g</span></div><div><b>${ok ? (r.kg / r.weight).toFixed(3) : '—'}</b><span>효율 kg/g</span></div></div></header>
   ${ok ? `<p class="lead">먼저 깨질 곳: ${capLabel(r.govern)}</p>` : `<p class="lead bad">${esc(r.msg)}</p>`}
   <h3>1. 준비물</h3>
