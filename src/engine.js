@@ -8,6 +8,12 @@ const MAT = {
   steel: { E: 200000, A: Math.PI * 9 / 4, I: Math.PI * 81 / 64, fy: 250, rho: 0.00785 },
   band:  { kw: 150, slip: 60, g: 0.3 }
 };
+// 목재 단면: wood 값 1~3 = 5 mm 각재를 그 수만큼 겹쳐 붙인 집성재, 10 = 10 mm 각재 1개
+const BIG = 10;
+const secA = w => w === BIG ? 100 : MAT.wood.A1 * w;            // mm²
+const secI = w => w === BIG ? 1e4 / 12 : MAT.wood.I1 * w;       // mm⁴ (10×10: bh³/12 = 833 mm⁴)
+const woodName = w => w === BIG ? '10 mm 각재' : `5 mm ${w}겹`;
+const woodVis = w => w === BIG ? 2.6 : w;                         // 그림 굵기용
 const DEFAULT_WRAPS = 3, MAX_WRAPS = 8, MIN_WRAPS = 1, G_ACC = 9.80665;
 
 const nk = (x, y) => x + ',' + y;
@@ -145,8 +151,8 @@ function solveLinear(K, F, n) {
   for (let r = n - 1; r >= 0; r--) { let s = F[r]; for (let c = r + 1; c < n; c++) s -= K[r][c] * u[c]; u[r] = s / K[r][r]; }
   return { singular: false, u };
 }
-function woodRes(n, L, Lout) {
-  const W = MAT.wood, A = W.A1 * n, pe = Math.PI * Math.PI * W.E * W.I1 * n;
+function woodRes(w, L, Lout) {
+  const W = MAT.wood, A = secA(w), pe = Math.PI * Math.PI * W.E * secI(w);
   return {
     tens: { R: W.ft * A, mode: '인장 파단' },
     comp: [{ R: W.fc * A, mode: '압축 파괴(압궤)' }, { R: pe / (L * L), mode: '면내 좌굴' }, { R: pe / (Lout * Lout), mode: '면외 좌굴' }]
@@ -169,13 +175,13 @@ function analyze(m) {
     const i = addN(s.a), j = addN(s.b);
     const L = Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y) * GRID_MM;
     const base = { seg: s, key: segKey(s.a, s.b), i, j, L, f: 0 };
-    if (s.wood > 0) { const A = MAT.wood.A1 * s.wood; out.elements.push({ ...base, kind: 'wood', n: s.wood, EA: MAT.wood.E * A }); wG += 2 * L * A * MAT.wood.rho; out.woodLen += L; }
+    if (s.wood > 0) { const A = secA(s.wood); out.elements.push({ ...base, kind: 'wood', n: s.wood, EA: MAT.wood.E * A }); wG += 2 * L * A * MAT.wood.rho; out.woodLen += L; }
     if (s.steel) { out.elements.push({ ...base, kind: 'steel', n: 0, EA: MAT.steel.E * MAT.steel.A }); wG += 2 * L * MAT.steel.A * MAT.steel.rho; out.steelLen += 2 * L; }
   }
   out.woodLen *= 2;
   for (const p of Object.values(m.plan)) {
     const L = Math.hypot((p.xb - p.xa) * GRID_MM, m.width * GRID_MM);
-    if (p.wood) { wG += L * MAT.wood.A1 * p.wood * MAT.wood.rho; out.woodLen += L; }
+    if (p.wood) { wG += L * secA(p.wood) * MAT.wood.rho; out.woodLen += L; }
     if (p.steel) { wG += L * MAT.steel.A * MAT.steel.rho; out.steelLen += L; }
   }
   for (const n of nodes) out.wraps += n.w;

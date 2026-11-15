@@ -1,39 +1,45 @@
 
-/* ───────────────── 대회 모드: 규칙 점검 · 점수 · 개선 추천 · 팁 ───────────────── */
+/* ───────────────── 과제 규칙 점검 · 점수 · 개선 추천 · 팁 ───────────────── */
 const RULES_KEY = 'tb-lab-3d-rules';
-const RULES = Object.assign({ score: 'eff', minWidth: 60, minLength: 600, maxWeight: '', deflLimit: '', maxSticks: '', maxSteel: '', maxWraps: '', cap: '', stock: 60, margin: 0.5 },
+const RULES = Object.assign({ v: 2, score: 'load', minWidth: 60, minLength: 600, max10: 10, max5: 20, maxWeight: '', deflLimit: '', maxSticks: '', maxSteel: '', maxWraps: '', cap: '', stock: 60, margin: 0.5 },
   (() => { try { return JSON.parse(localStorage.getItem(RULES_KEY)) || {}; } catch (e) { return {}; } })());
+// 과제 규칙(최대 하중으로 순위, 지급량 10 mm 10개·5 mm 20개)으로 예전 저장값을 한 번 옮긴다
+if (!(RULES.v >= 2)) { Object.assign(RULES, { v: 2, score: 'load', max10: 10, max5: 20 }); try { localStorage.setItem('tb-lab-3d-rules', JSON.stringify(RULES)); } catch (e) {} }
 function storeRules() { try { localStorage.setItem(RULES_KEY, JSON.stringify(RULES)); } catch (e) {} }
 const numOrNull = v => (v === '' || v == null || isNaN(+v) || +v <= 0) ? null : +v;
 
-// 재료 개수: 각재 조각(두 면 + 가로재), 각재 몇 개에서 잘라내는지, 철근 길이, 고무줄 감기 수
-function materialsOf(m) {
-  const pieces = [];
-  let steel = 0;
-  for (const s of Object.values(m.segs)) {
-    const L = Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y) * 5;
-    for (let f = 0; f < 2; f++) { for (let k = 0; k < s.wood; k++) pieces.push(L); if (s.steel) steel += L; }
-  }
-  for (const p of Object.values(m.plan)) {
-    const L = Math.hypot((p.xb - p.xa) * 5, m.width * 5);
-    for (let k = 0; k < p.wood; k++) pieces.push(L); if (p.steel) steel += L;
-  }
-  let wraps = 0; for (const k of structNodes(m).keys()) wraps += 2 * getWraps(m, k);
+// 재료 개수: 각재 조각(두 면 + 가로재), 각재 몇 개에서 잘라내는지, 철물 길이, 고무줄 감기 수
+// 각재 몇 개에서 잘라내는지: 긴 조각부터 남은 길이에 채워 넣기 (톱날 두께 0.2 cm)
+function packCount(pieces) {
   const lens = pieces.map(L => L + 2 * RULES.margin).sort((a, b) => b - a), bins = [];
   let tooLong = 0;
   for (const L of lens) { if (L > RULES.stock) { tooLong++; continue; } const i = bins.findIndex(r => r >= L + 0.2); if (i >= 0) bins[i] -= L + 0.2; else bins.push(RULES.stock - L - 0.2); }
-  return { pieces: pieces.length, sticks: bins.length + tooLong, tooLong, steel, wraps };
+  return { sticks: bins.length + tooLong, tooLong };
+}
+function materialsOf(m) {
+  const p5 = [], p10 = [];
+  let steel = 0;
+  const put = (w, L, n) => { for (let f = 0; f < n; f++) { if (w === BIG) p10.push(L); else for (let k = 0; k < w; k++) p5.push(L); } };
+  for (const s of Object.values(m.segs)) { const L = Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y) * 5; put(s.wood, L, 2); if (s.steel) steel += 2 * L; }
+  for (const p of Object.values(m.plan)) { const L = Math.hypot((p.xb - p.xa) * 5, m.width * 5); put(p.wood, L, 1); if (p.steel) steel += L; }
+  let wraps = 0; for (const k of structNodes(m).keys()) wraps += 2 * getWraps(m, k);
+  const a = packCount(p5), b = packCount(p10);
+  return { pieces5: p5.length, pieces10: p10.length, sticks5: a.sticks, sticks10: b.sticks, tooLong: a.tooLong + b.tooLong, steel, wraps };
 }
 function compEval(m, r) {
   const ev = { ok: r.status === 'ok', kg: 0, counted: 0, limitBy: null, checks: [], viol: 0, score: null, mat: materialsOf(m) };
-  const chk = (label, val, lim, ok, unit) => { ev.checks.push({ label, val, lim, ok, unit }); if (!ok) ev.viol++; };
+  // soft = 지급량처럼 넘어도 추가 요청이 되는 항목: 주의로만 표시하고 위반으로 세지 않는다
+  const chk = (label, val, lim, ok, unit, soft) => { ev.checks.push({ label, val, lim, ok, unit, soft }); if (!ok && !soft) ev.viol++; };
   const mw = numOrNull(RULES.maxWeight), ms = numOrNull(RULES.maxSticks), mst = numOrNull(RULES.maxSteel), mwr = numOrNull(RULES.maxWraps), dl = numOrNull(RULES.deflLimit), cap = numOrNull(RULES.cap);
   const mnw = numOrNull(RULES.minWidth), mnl = numOrNull(RULES.minLength);
-  if (mnw) chk('다리 폭', (m.width * 50).toFixed(0) + ' mm', '≥ ' + mnw + ' mm', m.width * 50 >= mnw - 1e-6);
+  if (mnw) chk('다리 폭', (m.width * 50).toFixed(0) + ' mm', mnw + ' mm 초과', m.width * 50 > mnw + 1e-6);
   if (mnl) { const xs = [...structNodes(m).values()].map(n => n.x); const len = xs.length ? (Math.max(...xs) - Math.min(...xs)) * 50 : 0; chk('다리 길이', len.toFixed(0) + ' mm', '≥ ' + mnl + ' mm', len >= mnl - 1e-6); }
   if (mw) chk('다리 무게', r.weight.toFixed(1) + ' g', '≤ ' + mw + ' g', r.weight <= mw);
-  if (ms) chk(`각재 수 (${RULES.stock} cm짜리)`, ev.mat.sticks + '개', '≤ ' + ms + '개', ev.mat.sticks <= ms);
-  if (mst) chk('철근 길이', (ev.mat.steel / 10).toFixed(0) + ' cm', '≤ ' + mst + ' cm', ev.mat.steel / 10 <= mst);
+  const m5 = numOrNull(RULES.max5), m10 = numOrNull(RULES.max10);
+  if (m10) chk(`10 mm 각재 (${RULES.stock} cm짜리)`, ev.mat.sticks10 + '개', `지급 ${m10}개`, ev.mat.sticks10 <= m10, '', true);
+  if (m5) chk(`5 mm 각재 (${RULES.stock} cm짜리)`, ev.mat.sticks5 + '개', `지급 ${m5}개`, ev.mat.sticks5 <= m5, '', true);
+  if (ms) chk(`각재 수 합계`, (ev.mat.sticks5 + ev.mat.sticks10) + '개', '≤ ' + ms + '개', ev.mat.sticks5 + ev.mat.sticks10 <= ms);
+  if (mst) chk('철물 길이', (ev.mat.steel / 10).toFixed(0) + ' cm', '≤ ' + mst + ' cm', ev.mat.steel / 10 <= mst);
   if (mwr) chk('고무줄 감기', ev.mat.wraps + '회', '≤ ' + mwr + '회', ev.mat.wraps <= mwr);
   if (ev.mat.tooLong) chk('각재보다 긴 부재', ev.mat.tooLong + '개', '0개 (이어 붙여야 함)', false);
   if (!ev.ok) return ev;
@@ -58,10 +64,11 @@ function candidates(m) {
   }
   for (const [key, s] of Object.entries(m.segs)) {
     const nm = `(${s.a.x * 5},${s.a.y * 5})–(${s.b.x * 5},${s.b.y * 5})`;
-    if (s.wood && s.wood < 3) { const c = clone(); c.segs[key].wood++; out.push({ m: c, txt: `${nm} 목재 ${s.wood}→${s.wood + 1}겹` }); }
-    if (s.wood > 1) { const c = clone(); c.segs[key].wood--; out.push({ m: c, txt: `${nm} 목재 ${s.wood}→${s.wood - 1}겹` }); }
-    if (!s.steel && s.wood) { const c = clone(); c.segs[key].steel = true; out.push({ m: c, txt: `${nm} 철근 덧대기` }); }
-    if (s.steel && s.wood) { const c = clone(); c.segs[key].steel = false; out.push({ m: c, txt: `${nm} 철근 빼기` }); }
+    const up = s.wood === 3 ? BIG : s.wood && s.wood < 3 ? s.wood + 1 : null, dn = s.wood === BIG ? 3 : s.wood > 1 ? s.wood - 1 : null;
+    if (up) { const c = clone(); c.segs[key].wood = up; out.push({ m: c, txt: `${nm} ${woodName(s.wood)}→${woodName(up)}` }); }
+    if (dn) { const c = clone(); c.segs[key].wood = dn; out.push({ m: c, txt: `${nm} ${woodName(s.wood)}→${woodName(dn)}` }); }
+    if (!s.steel && s.wood) { const c = clone(); c.segs[key].steel = true; out.push({ m: c, txt: `${nm} 철물 덧대기` }); }
+    if (s.steel && s.wood) { const c = clone(); c.segs[key].steel = false; out.push({ m: c, txt: `${nm} 철물 빼기` }); }
   }
   return out;
 }
@@ -101,6 +108,7 @@ function contextTips(r, ev) {
   const g = r.govern;
   if (g.type === 'joint') tips.push(['tip', `가장 약한 곳이 절점이에요. 고무줄 1회는 두 면 합쳐 0.6 g뿐이라, ${capLabel(g).split(' 고무줄')[0]}에 한 번 더 감는 게 무게 대비 가장 싼 보강이에요.`]);
   else { const e = r.elements[g.idx]; if (e.mode === '면외 좌굴') tips.push(['tip', '옆으로 휘어서 깨질 예정이에요. 겹을 늘리기 전에 그 높이에 X 브레이싱을 먼저 넣는 게 가벼워요.']); else if (e.mode.includes('좌굴')) tips.push(['tip', '압축재가 좌굴로 깨질 예정이에요. 길이를 반으로 나누면 버티는 힘이 4배(∝ 1/L²)라 겹을 늘리는 것보다 효과가 클 때가 많아요.']); }
+  if (g.type === 'joint' ? r.nodes[g.idx].y === 0 : (r.elements[g.idx].seg.a.y === 0 && r.elements[g.idx].seg.b.y === 0)) tips.push(['tip', '가장 약한 곳이 바닥(높이 0)이에요. 교수님 힌트대로 밑바닥을 튼튼하게: 하현재를 10 mm 각재나 2–3겹 집성재로, 바닥 절점 고무줄을 더 감으세요.']);
   const lazy = r.elements.filter(e => e.kind === 'wood' && e.n >= 2 && isFinite(e.cap) && e.cap > 3 * r.Pface);
   if (lazy.length) tips.push(['tip', `힘을 거의 안 받는 두꺼운 부재가 ${lazy.length}개 있어요 (${lazy.slice(0, 3).map(e => elemLabel(e)).join(', ')}). 겹을 줄이면 무게가 줄어 효율이 올라요.`]);
   const zero = r.elements.filter(e => Math.abs(e.f) < 1e-9);
@@ -109,16 +117,19 @@ function contextTips(r, ev) {
   return tips;
 }
 const GENERAL_TIPS = [
-  '각재를 고를 때 옹이, 뒤틀림, 결이 비스듬한 것은 빼세요. 모델은 결함 없는 목재를 가정해요.',
+  '교수님 힌트: 밑바닥이 튼튼해야 많이 버텨요. 합판·바구니 하중이 바닥 쪽으로 들어오니 하현재와 바닥 절점을 먼저 보강하세요.',
+  '접합부는 고무줄 2개로만, 접착제 금지예요. 접착제는 5 mm 각재를 겹쳐 집성재(부재)를 만들 때만 써요.',
+  '10 mm 각재는 단면이 커서 좌굴에 강해요(I = 833 mm⁴로 5 mm 3겹의 5배). 길게 압축받는 상현재·끝 사재에 아껴 쓰세요.',
   '절점에서 부재 중심선이 한 점에서 만나게 맞추세요. 어긋나면 비틀림이 생겨 계산보다 일찍 깨져요.',
   '두 트러스를 같은 실물 크기 도면 위에서 만들어 모양을 똑같이 맞추세요. 계산은 두 면이 같다고 봐요.',
-  '대회 무게에 고무줄·접착제가 들어가는지, 파괴를 "부러짐"으로 보는지 "처짐 한계"로 보는지 규칙을 먼저 확인하세요.',
-  '가능하면 시험용 부재 몇 개를 먼저 부숴 보고, 그 결과로 목재 강도·고무줄 마찰 값을 보정하세요. 결과는 설계안끼리 비교하는 데 가장 믿을 만해요.'
+  '각재를 고를 때 옹이, 뒤틀림, 결이 비스듬한 것은 빼세요. 모델은 결함 없는 목재를 가정해요.',
+  '철사·철물을 쓰려면 11/19 계획 발표 때 아이디어를 말하고 승인받으세요.',
+  '시험용 부재와 고무줄 접합 몇 개를 먼저 부숴 보고, 그 결과로 상수를 보정하세요. 계산값은 설계안끼리 비교할 때 가장 믿을 만해요.'
 ];
 
 /* ── 패널 ── */
 function syncRules() {
-  for (const [id, key] of [['r-score', 'score'], ['r-minw', 'minWidth'], ['r-minl', 'minLength'], ['r-weight', 'maxWeight'], ['r-defl', 'deflLimit'], ['r-sticks', 'maxSticks'], ['r-stock', 'stock'], ['r-steel', 'maxSteel'], ['r-wraps', 'maxWraps'], ['r-cap', 'cap']]) {
+  for (const [id, key] of [['r-score', 'score'], ['r-minw', 'minWidth'], ['r-minl', 'minLength'], ['r-weight', 'maxWeight'], ['r-defl', 'deflLimit'], ['r-max10', 'max10'], ['r-max5', 'max5'], ['r-sticks', 'maxSticks'], ['r-stock', 'stock'], ['r-steel', 'maxSteel'], ['r-wraps', 'maxWraps'], ['r-cap', 'cap']]) {
     const el = $(id); if (el && document.activeElement !== el) el.value = RULES[key];
   }
 }
@@ -126,11 +137,12 @@ function renderComp() {
   if (!R) return;
   const ev = compEval(S, R);
   $('cscore').textContent = scoreTxt(ev);
-  $('cscore-lbl').textContent = RULES.score === 'load' ? '대회 점수 (인정 하중)' : '대회 점수 (하중 ÷ 무게)';
+  $('cscore-lbl').textContent = RULES.score === 'load' ? '점수 기준: 버틴 하중 (순위 = 가장 많이 버틴 조)' : '점수 기준: 하중 ÷ 무게';
   $('cbasis').textContent = !ev.ok ? '구조가 안정해야 점수가 나와요'
     : `인정 하중 ${ev.counted.toFixed(1)} kg${ev.limitBy ? ` (${ev.limitBy})` : ''} · 무게 ${R.weight.toFixed(1)} g`;
-  const rows = ev.checks.map(c => `<li class="${c.ok ? 'pass' : 'fail'}"><span>${c.ok ? '✔' : '✖'} ${c.label}</span><span>${c.val} <small>${c.lim}</small></span></li>`);
-  rows.push(`<li class="info"><span>재료</span><span>각재 조각 ${ev.mat.pieces}개 → ${RULES.stock} cm 각재 ${ev.mat.sticks}개 · 고무줄 ${ev.mat.wraps}회</span></li>`);
+  const rows = ev.checks.map(c => `<li class="${c.ok ? 'pass' : c.soft ? 'soft' : 'fail'}"><span>${c.ok ? '✔' : c.soft ? '!' : '✖'} ${c.label}</span><span>${c.val} <small>${c.lim}${!c.ok && c.soft ? ' · 추가 요청' : ''}</small></span></li>`);
+  rows.push(`<li class="info"><span>접합부</span><span>고무줄 2개 · 접착제 금지 (규칙)</span></li>`);
+  rows.push(`<li class="info"><span>재료</span><span>10 mm 조각 ${ev.mat.pieces10}개 · 5 mm 조각 ${ev.mat.pieces5}개 · 고무줄 ${ev.mat.wraps}회</span></li>`);
   $('cchecks').innerHTML = rows.join('');
   $('cpill').className = 'pill ' + (!ev.ok ? 'idle' : ev.viol ? 'bad' : 'ok');
   $('cpill').textContent = !ev.ok ? '대기' : ev.viol ? `규칙 위반 ${ev.viol}` : '규칙 통과';
@@ -156,7 +168,7 @@ $('suglist').addEventListener('click', e => {
 });
 $('sugbtn').onclick = () => { if (mode === 'build') renderSuggestions(); };
 $('tunebtn').onclick = () => { if (mode === 'build') autoTune(); };
-for (const [id, key] of [['r-score', 'score'], ['r-minw', 'minWidth'], ['r-minl', 'minLength'], ['r-weight', 'maxWeight'], ['r-defl', 'deflLimit'], ['r-sticks', 'maxSticks'], ['r-stock', 'stock'], ['r-steel', 'maxSteel'], ['r-wraps', 'maxWraps'], ['r-cap', 'cap']]) {
+for (const [id, key] of [['r-score', 'score'], ['r-minw', 'minWidth'], ['r-minl', 'minLength'], ['r-weight', 'maxWeight'], ['r-defl', 'deflLimit'], ['r-max10', 'max10'], ['r-max5', 'max5'], ['r-sticks', 'maxSticks'], ['r-stock', 'stock'], ['r-steel', 'maxSteel'], ['r-wraps', 'maxWraps'], ['r-cap', 'cap']]) {
   $(id).addEventListener('change', e => {
     const v = e.target.value;
     RULES[key] = key === 'score' ? v : key === 'stock' ? Math.max(10, +v || 60) : (v === '' ? '' : Math.max(0, +v));

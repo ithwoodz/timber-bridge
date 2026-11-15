@@ -28,14 +28,13 @@ function designData() {
   return { r, nodes, name, segs, plans, top };
 }
 function cutList(d) {
-  const wood = [], steel = [];
-  for (const m of d.segs) for (let face = 0; face < 2; face++) {
-    for (let k = 0; k < m.s.wood; k++) wood.push({ L: m.L, id: m.id });
-    if (m.s.steel) steel.push({ L: m.L, id: m.id });
-  }
-  for (const q of d.plans) { for (let k = 0; k < q.p.wood; k++) wood.push({ L: q.L, id: q.id }); if (q.p.steel) steel.push({ L: q.L, id: q.id }); }
-  return { wood, steel };
+  const wood5 = [], wood10 = [], steel = [];
+  const put = (w, L, id) => { if (w === BIG) wood10.push({ L, id }); else for (let k = 0; k < w; k++) wood5.push({ L, id }); };
+  for (const m of d.segs) for (let face = 0; face < 2; face++) { put(m.s.wood, m.L, m.id); if (m.s.steel) steel.push({ L: m.L, id: m.id }); }
+  for (const q of d.plans) { put(q.p.wood, q.L, q.id); if (q.p.steel) steel.push({ L: q.L, id: q.id }); }
+  return { wood5, wood10, wood: wood5.concat(wood10), steel };
 }
+const matTxt = s => [s.wood ? woodName(s.wood) : '', s.steel ? '철물' : ''].filter(Boolean).join(' + ');
 function groupCuts(list) {
   const g = new Map();
   for (const p of list) {
@@ -78,8 +77,8 @@ function tag(g, x, y, text, bg) {
 }
 function memberLine(g, A, B, wood, steel) {
   const dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
-  if (wood) { g.strokeStyle = '#9a6a33'; g.lineWidth = 3 + 2.5 * (wood - 1); g.lineCap = 'butt'; g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.stroke(); }
-  if (steel) { const o = wood ? 3 + 1.3 * wood : 0; g.strokeStyle = '#46525e'; g.lineWidth = 2; g.setLineDash([7, 4]); g.beginPath(); g.moveTo(A[0] + nx * o, A[1] + ny * o); g.lineTo(B[0] + nx * o, B[1] + ny * o); g.stroke(); g.setLineDash([]); }
+  if (wood) { g.strokeStyle = wood === BIG ? '#7f5226' : '#9a6a33'; g.lineWidth = 3 + 2.5 * (woodVis(wood) - 1); g.lineCap = 'butt'; g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.stroke(); }
+  if (steel) { const o = wood ? 3 + 1.3 * woodVis(wood) : 0; g.strokeStyle = '#46525e'; g.lineWidth = 2; g.setLineDash([7, 4]); g.beginPath(); g.moveTo(A[0] + nx * o, A[1] + ny * o); g.lineTo(B[0] + nx * o, B[1] + ny * o); g.stroke(); g.setLineDash([]); }
 }
 function drawElevation(d) {
   const xs = d.nodes.map(n => n.x * CM), ys = d.nodes.map(n => n.y * CM);
@@ -126,7 +125,7 @@ function drawElevation(d) {
   g.fillStyle = '#222'; g.font = 'bold 15px sans-serif'; g.textAlign = 'left';
   g.fillText('측면도 · 같은 트러스 2개 (단위 cm, 격자 5 cm)', padX - 50, 26);
   g.font = '12px sans-serif'; g.fillStyle = '#555';
-  g.fillText('굵은 갈색 = 목재(굵을수록 겹 수 많음) · 회색 점선 = 철근 · ×숫자 = 고무줄 감기 수', padX - 50, 44);
+  g.fillText('굵은 갈색 = 목재(굵을수록 겹 수 많음) · 회색 점선 = 철물 · ×숫자 = 고무줄 감기 수', padX - 50, 44);
   return c.toDataURL('image/png');
 }
 function drawPlanLevel(d, y) {
@@ -167,14 +166,14 @@ function buildSteps(d, cuts, pack) {
   const ids = role => d.segs.filter(m => m.role === role).map(m => m.id);
   const join = a => a.length > 6 ? a.slice(0, 6).join(', ') + ` 외 ${a.length - 6}개` : a.join(', ');
   const steps = [];
-  steps.push(['재료 자르기', `아래 절단 목록대로 목재 ${cuts.wood.length}개${cuts.steel.length ? `, 철근 ${cuts.steel.length}개` : ''}를 자릅니다. 길이는 절점 중심 사이 거리에 양 끝 묶을 여유 ${docOpt.margin} cm씩을 더한 값입니다. 같은 길이끼리 모아 이름표를 붙여 두면 헷갈리지 않아요.`]);
+  steps.push(['재료 자르기', `아래 절단 목록대로 ${cuts.wood10.length ? `10 mm 각재 ${cuts.wood10.length}개, ` : ''}5 mm 각재 ${cuts.wood5.length}개${cuts.steel.length ? `, 철물 ${cuts.steel.length}개` : ''}를 자릅니다. 길이는 절점 중심 사이 거리에 양 끝 묶을 여유 ${docOpt.margin} cm씩을 더한 값입니다. 같은 길이끼리 모아 이름표를 붙여 두면 헷갈리지 않아요.`]);
   steps.push(['실물 크기 도면 깔기', `측면도를 실제 크기(경간 60 cm)로 큰 종이에 옮겨 그리고 절점 ${d.nodes.map(n => d.name.get(nk(n.x, n.y))).slice(0, 8).join(', ')}${d.nodes.length > 8 ? ' …' : ''}을 표시합니다. 이 도면 위에서 두 트러스를 똑같이 만듭니다.`]);
-  const multi = d.segs.filter(m => m.s.wood > 1).concat(d.plans.filter(q => q.p.wood > 1));
-  if (multi.length) steps.push(['겹 부재 만들기', `${join(multi.map(m => m.id + `(${(m.s || m.p).wood}겹)`))}는 각재를 겹 수만큼 나란히 붙여 한 다발로 만든 뒤 쓰세요.`]);
+  const multi = d.segs.filter(m => m.s.wood > 1 && m.s.wood !== BIG).concat(d.plans.filter(q => q.p.wood > 1 && q.p.wood !== BIG));
+  if (multi.length) steps.push(['집성재(겹 부재) 만들기', `${join(multi.map(m => m.id + `(${(m.s || m.p).wood}겹)`))}는 5 mm 각재를 겹 수만큼 나란히 대고 접착제로 붙여 집성재로 만든 뒤 쓰세요. 접착제는 부재를 만들 때만 쓰고 접합부에는 쓰지 않아요(규칙).`]);
   const order = [['하현재', ids('하현재')], ['상현재', ids('상현재')], ['수평재', ids('수평재')], ['수직재', ids('수직재')], ['사재', ids('사재')]].filter(([, a]) => a.length);
   steps.push(['측면 트러스 2개 조립', order.map(([r, a]) => `${r} ${join(a)}`).join(' → ') + ' 순서로 도면 위에 놓습니다. 같은 방법으로 한 번 더 만들어 똑같은 트러스 2개를 준비합니다.']);
   const st = d.segs.filter(m => m.s.steel);
-  if (st.length) steps.push(['철근 붙이기', `${join(st.map(m => m.id))}${st.some(m => m.s.wood) ? '는 같은 구간의 목재 옆에 철근을 나란히 대고' : '는 철근만 쓰는 부재로,'} 양 끝 절점에서 목재와 함께 묶습니다.`]);
+  if (st.length) steps.push(['철물 붙이기', `${join(st.map(m => m.id))}${st.some(m => m.s.wood) ? '는 같은 구간의 목재 옆에 철물을 나란히 대고' : '는 철물만 쓰는 부재로,'} 양 끝 절점에서 목재와 함께 묶습니다.`]);
   const wr = d.nodes.map(n => `${d.name.get(nk(n.x, n.y))} ${getWraps(S, nk(n.x, n.y))}회`);
   const tot = d.nodes.reduce((s, n) => s + getWraps(S, nk(n.x, n.y)), 0);
   steps.push(['절점 고무줄 감기', `절점마다 정해진 횟수만큼 고무줄을 감아 단단히 묶습니다: ${wr.join(', ')}. 한 면 ${tot}회, 두 면 합계 ${tot * 2}회. 감기 수가 절점 강도를 정하니 정확히 지켜 주세요.`]);
@@ -195,9 +194,11 @@ function buildSteps(d, cuts, pack) {
 let lastDoc = null;
 function renderDoc() {
   R = analyze(S);
-  const d = designData(), cuts = cutList(d), pack = packStock(cuts.wood), r = d.r, ok = r.status === 'ok';
-  const gw = groupCuts(cuts.wood), gs = groupCuts(cuts.steel);
-  const totW = cuts.wood.reduce((s, p) => s + p.L + 2 * docOpt.margin, 0), totS = cuts.steel.reduce((s, p) => s + p.L + 2 * docOpt.margin, 0);
+  const d = designData(), cuts = cutList(d), r = d.r, ok = r.status === 'ok';
+  const pack5 = packStock(cuts.wood5), pack10 = packStock(cuts.wood10), pack = { count: pack5.count + pack10.count, tooLong: pack5.tooLong + pack10.tooLong };
+  const gw5 = groupCuts(cuts.wood5), gw10 = groupCuts(cuts.wood10), gw = gw10.concat(gw5), gs = groupCuts(cuts.steel);
+  const tot = list => list.reduce((s, p) => s + p.L + 2 * docOpt.margin, 0), totW = tot(cuts.wood), totS = tot(cuts.steel);
+  const give = (n, lim) => n > lim ? ` <span class="bad">(지급 ${lim}개보다 ${n - lim}개 많음 · 추가 요청)</span>` : ` <span class="note">(지급 ${lim}개 중)</span>`;
   const wraps = d.nodes.reduce((s, n) => s + getWraps(S, nk(n.x, n.y)), 0);
   const steps = buildSteps(d, cuts, pack);
   const imgs = { side: d.segs.length ? drawElevation(d) : null, plans: [...new Set(d.plans.map(q => q.p.y))].sort((a, b) => b - a).map(y => ({ y, url: drawPlanLevel(d, y) })), three: d.segs.length ? snap3D() : null };
@@ -212,12 +213,14 @@ function renderDoc() {
   <div class="opts"><label>각재 한 개 길이 <input id="optstock" type="number" min="10" max="200" step="1" value="${docOpt.stock}"> cm</label>
     <label>양 끝 묶을 여유 <input id="optmargin" type="number" min="0" max="3" step="0.1" value="${docOpt.margin}"> cm</label><span class="note">받은 재료 길이로 바꾸면 개수가 다시 계산돼요</span></div>
   <ul class="bom">
-    <li><b>목재 각재 5×5 mm</b> · 조각 ${cuts.wood.length}개, 총 ${f1(totW)} cm → <b>${pack.count}개</b> 필요${pack.tooLong ? ` <span class="bad">(+ ${docOpt.stock} cm보다 긴 조각 ${pack.tooLong}개)</span>` : ''}</li>
-    ${cuts.steel.length ? `<li><b>철근 Ø3 mm</b> · 조각 ${cuts.steel.length}개, 총 ${f1(totS)} cm (${(r.steelLen * MAT.steel.A * MAT.steel.rho).toFixed(1)} g)</li>` : ''}
+    <li><b>10 mm 각재</b> · 조각 ${cuts.wood10.length}개, 총 ${f1(tot(cuts.wood10))} cm → <b>${pack10.count}개</b> 필요${give(pack10.count, 10)}</li>
+    <li><b>5 mm 각재</b> · 조각 ${cuts.wood5.length}개, 총 ${f1(tot(cuts.wood5))} cm → <b>${pack5.count}개</b> 필요${give(pack5.count, 20)}</li>
+    ${pack.tooLong ? `<li class="bad">각재 한 개(${docOpt.stock} cm)보다 긴 조각 ${pack.tooLong}개: 이어 붙이거나 절점을 넣어 나누세요</li>` : ''}
+    ${cuts.steel.length ? `<li><b>철물 Ø3 mm</b> · 조각 ${cuts.steel.length}개, 총 ${f1(totS)} cm (${(r.steelLen * MAT.steel.A * MAT.steel.rho).toFixed(1)} g)</li>` : ''}
     <li><b>고무줄</b> · 절점 ${d.nodes.length}곳 × 2면, 감기 총 ${wraps * 2}회 (한 면 ${wraps}회)</li>
-    <li><b>도구</b> · 자, 연필, 커터 또는 실톱${cuts.steel.length ? ', 철근 절단용 니퍼(펜치)' : ''}, 실물 크기 도면용 큰 종이</li>
+    <li><b>도구</b> · 자, 연필, 커터 또는 실톱${cuts.steel.length ? ', 철물 절단용 니퍼(펜치)' : ''}, 실물 크기 도면용 큰 종이</li>
   </ul>
-  <div class="tw"><table><thead><tr><th>재료</th><th>자를 길이</th><th>개수</th><th>쓰는 부재</th></tr></thead><tbody>${cutRows(gw, '목재') + cutRows(gs, '철근')}</tbody></table></div>
+  <div class="tw"><table><thead><tr><th>재료</th><th>자를 길이</th><th>개수</th><th>쓰는 부재</th></tr></thead><tbody>${cutRows(gw10, '10 mm 각재') + cutRows(gw5, '5 mm 각재') + cutRows(gs, '철물')}</tbody></table></div>
   <h3>2. 도면</h3>
   <p class="note">그림을 길게 누르거나 우클릭하면 이미지로 저장할 수 있어요.</p>
   ${imgs.side ? `<figure><img src="${imgs.side}" alt="측면도"></figure>` : '<p class="note">측면 트러스가 아직 없어요.</p>'}
@@ -225,8 +228,8 @@ function renderDoc() {
   ${imgs.three ? `<figure><img src="${imgs.three}" alt="3D 모습"><figcaption>3D 모습</figcaption></figure>` : ''}
   <h3>3. 부재표</h3>
   <div class="tw"><table><thead><tr><th>번호</th><th>절점</th><th>역할</th><th>재료</th><th>길이</th><th>수량</th><th>파괴 하중일 때 힘</th></tr></thead><tbody>
-    ${d.segs.map(m => `<tr><td>${m.id}</td><td>${m.na}–${m.nb}</td><td>${m.role}</td><td>${[m.s.wood ? `목재 ${m.s.wood}겹` : '', m.s.steel ? '철근' : ''].filter(Boolean).join(' + ')}</td><td>${f1(m.L)} cm</td><td>2 (앞·뒤)</td><td>${forceTxt(m)}</td></tr>`).join('')}
-    ${d.plans.map(q => `<tr><td>${q.id}</td><td>${q.na}–${q.nb}′</td><td>${q.kind} (높이 ${q.p.y * CM})</td><td>${[q.p.wood ? `목재 ${q.p.wood}겹` : '', q.p.steel ? '철근' : ''].filter(Boolean).join(' + ')}</td><td>${f1(q.L)} cm</td><td>1</td><td>0 (횡지지)</td></tr>`).join('')}
+    ${d.segs.map(m => `<tr><td>${m.id}</td><td>${m.na}–${m.nb}</td><td>${m.role}</td><td>${matTxt(m.s)}</td><td>${f1(m.L)} cm</td><td>2 (앞·뒤)</td><td>${forceTxt(m)}</td></tr>`).join('')}
+    ${d.plans.map(q => `<tr><td>${q.id}</td><td>${q.na}–${q.nb}′</td><td>${q.kind} (높이 ${q.p.y * CM})</td><td>${matTxt(q.p)}</td><td>${f1(q.L)} cm</td><td>1</td><td>0 (횡지지)</td></tr>`).join('')}
   </tbody></table></div>
   <h3>4. 절점표</h3>
   <div class="tw"><table><thead><tr><th>절점</th><th>위치 (가로, 높이)</th><th>고무줄</th><th>횡지지</th></tr></thead><tbody>
@@ -246,13 +249,14 @@ function docText() {
   L.push(`# ${S.name} · Timber Bridge 설계서`, `경간 60 cm · 폭 ${Wcm()} cm · 높이 ${d.top * CM} cm`);
   L.push(`예상 최대 하중 ${ok ? r.kg.toFixed(1) + ' kg' : '—'} · 무게 ${r.weight.toFixed(1)} g · 효율 ${ok ? (r.kg / r.weight).toFixed(3) : '—'} kg/g`);
   if (ok) L.push(`먼저 깨질 곳: ${capLabel(r.govern)}`);
-  L.push('', '## 1. 준비물', `- 목재 각재 5×5 mm: 조각 ${cuts.wood.length}개 → 각재(${docOpt.stock} cm) ${pack.count}개`);
-  if (cuts.steel.length) L.push(`- 철근 Ø3 mm: 조각 ${cuts.steel.length}개`);
+  L.push('', '## 1. 준비물', `- 10 mm 각재: 조각 ${cuts.wood10.length}개 → ${docOpt.stock} cm 각재 ${packStock(cuts.wood10).count}개 (지급 10개)`, `- 5 mm 각재: 조각 ${cuts.wood5.length}개 → ${docOpt.stock} cm 각재 ${packStock(cuts.wood5).count}개 (지급 20개)`);
+  if (cuts.steel.length) L.push(`- 철물 Ø3 mm: 조각 ${cuts.steel.length}개`);
   L.push(`- 고무줄: 감기 총 ${wraps * 2}회 (절점 ${d.nodes.length}곳 × 2면)`, '', '절단 목록 (양 끝 여유 ' + docOpt.margin + ' cm 포함)');
-  for (const e of gw) L.push(`- 목재 ${f1(e.len)} cm × ${e.count}개 (${[...e.ids].join(', ')})`);
-  for (const e of gs) L.push(`- 철근 ${f1(e.len)} cm × ${e.count}개 (${[...e.ids].join(', ')})`);
+  for (const e of groupCuts(cuts.wood10)) L.push(`- 10 mm 각재 ${f1(e.len)} cm × ${e.count}개 (${[...e.ids].join(', ')})`);
+  for (const e of groupCuts(cuts.wood5)) L.push(`- 5 mm 각재 ${f1(e.len)} cm × ${e.count}개 (${[...e.ids].join(', ')})`);
+  for (const e of gs) L.push(`- 철물 ${f1(e.len)} cm × ${e.count}개 (${[...e.ids].join(', ')})`);
   L.push('', '## 2. 부재표');
-  for (const m of d.segs) L.push(`- ${m.id} ${m.na}–${m.nb} ${m.role} · ${[m.s.wood ? `목재 ${m.s.wood}겹` : '', m.s.steel ? '철근' : ''].filter(Boolean).join(' + ')} · ${f1(m.L)} cm × 2`);
+  for (const m of d.segs) L.push(`- ${m.id} ${m.na}–${m.nb} ${m.role} · ${matTxt(m.s)} · ${f1(m.L)} cm × 2`);
   for (const q of d.plans) L.push(`- ${q.id} ${q.na}–${q.nb}′ ${q.kind}(높이 ${q.p.y * CM} cm) · ${f1(q.L)} cm`);
   L.push('', '## 3. 절점 (가로, 높이 cm · 고무줄)');
   for (const n of d.nodes) { const k = nk(n.x, n.y); L.push(`- ${d.name.get(k)} (${n.x * CM}, ${n.y * CM}) · ${getWraps(S, k)}회`); }

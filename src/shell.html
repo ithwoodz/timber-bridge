@@ -104,6 +104,11 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
 .rgrid select.btn{color:#fff;background:var(--btn)}
 .wbox{display:flex;align-items:center;gap:4px;font-size:13px}
 .wbox input{width:64px;font:inherit;font-size:13px;padding:4px 6px;border:2px solid #000;background:#fff;color:#111;color-scheme:light}
+.water{font-size:14px;color:#1f4f8f;margin:2px 0}
+.checks li.soft{background:#efe3b8;border-color:#9a7a10;color:#4d3d00}
+.assign{font-size:12px;line-height:1.6}
+.assign table{font-size:12px}
+.assign td,.assign th{padding:2px 4px}
 .sgbtns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 #suglist,.tips{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:12px;line-height:1.5}
 #suglist li{border-bottom:1px dashed #9a9a9a;padding-bottom:6px;display:grid;gap:3px}
@@ -168,10 +173,9 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
   <h1>Timber Bridge 가상 실험실</h1>
   <select class="btn" id="preset" aria-label="프리셋 불러오기">
     <option value="">프리셋 불러오기…</option>
-    <option value="pratt12Strong">Pratt 12칸 고강도 (가장 강함)</option>
-    <option value="prattLowStrong">Pratt h10 고강도 (효율 최고 · 처짐 큼)</option>
-    <option value="warrenStrong">Warren 고강도 (처짐 적음)</option>
-    <option value="prattStrong">Pratt 고강도</option>
+    <option value="prattTallStrong">Pratt h20 고강도 (가장 강함)</option>
+    <option value="prattStrong">Pratt h15 고강도 (효율 최고)</option>
+    <option value="howeStrong">Howe h20 고강도 (처짐 최소)</option>
     <option value="pratt">Pratt 트러스 (기본)</option>
     <option value="empty">빈 캔버스</option>
   </select>
@@ -215,6 +219,7 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
       <h2>예상 최대 하중 (다리 전체) <span class="pill idle" id="stat">—</span></h2>
       <div class="pname" id="pname"></div>
       <div class="big" id="kg">—</div>
+      <div class="water" id="kgwater"></div>
       <div class="sub" id="kgsub"></div>
       <button class="btn go" id="test" type="button">하중 시험 시작 (Space)</button>
     </div>
@@ -223,8 +228,8 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
       <div class="cause" id="cause">—</div>
     </div>
     <div class="panel comp">
-      <h2>대회 모드 <span class="pill idle" id="cpill">—</span></h2>
-      <div class="sub" id="cscore-lbl">대회 점수</div>
+      <h2>과제 규칙 점검 <span class="pill idle" id="cpill">—</span></h2>
+      <div class="sub" id="cscore-lbl">점수 기준</div>
       <div class="cbig" id="cscore">—</div>
       <div class="sub" id="cbasis"></div>
       <ul class="checks" id="cchecks"></ul>
@@ -236,9 +241,11 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
           <label for="r-minl">다리 길이 최소 (mm)</label><input id="r-minl" type="number" min="0" step="1" placeholder="예: 600">
           <label for="r-weight">무게 상한 (g)</label><input id="r-weight" type="number" min="0" step="1" placeholder="예: 150">
           <label for="r-defl">처짐 한계 (mm)</label><input id="r-defl" type="number" min="0" step="0.1" placeholder="예: 12.7">
-          <label for="r-sticks">각재 수 상한</label><input id="r-sticks" type="number" min="0" step="1" placeholder="예: 30">
+          <label for="r-max10">10 mm 각재 지급 (개)</label><input id="r-max10" type="number" min="0" step="1" placeholder="10">
+          <label for="r-max5">5 mm 각재 지급 (개)</label><input id="r-max5" type="number" min="0" step="1" placeholder="20">
+          <label for="r-sticks">각재 수 합계 상한</label><input id="r-sticks" type="number" min="0" step="1" placeholder="빈칸 = 없음">
           <label for="r-stock">각재 한 개 길이 (cm)</label><input id="r-stock" type="number" min="10" step="1">
-          <label for="r-steel">철근 상한 (cm)</label><input id="r-steel" type="number" min="0" step="1" placeholder="예: 120">
+          <label for="r-steel">철물 상한 (cm)</label><input id="r-steel" type="number" min="0" step="1" placeholder="예: 120">
           <label for="r-wraps">고무줄 감기 상한 (회)</label><input id="r-wraps" type="number" min="0" step="1" placeholder="두 면 합계">
           <label for="r-cap">인정 하중 상한 (kg)</label><input id="r-cap" type="number" min="0" step="1" placeholder="예: 50">
         </div>
@@ -248,12 +255,12 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
     <div class="panel">
       <h2>개선 추천</h2>
       <div class="sgbtns"><button class="btn sm" id="sugbtn" type="button">한 칸씩 바꿔 보기</button><button class="btn sm" id="tunebtn" type="button">자동으로 다듬기</button></div>
-      <ul id="suglist"><li class="muted">버튼을 누르면 고무줄·겹·철근을 하나씩 바꿔 대회 점수가 오르는 것을 찾아요.</li></ul>
+      <ul id="suglist"><li class="muted">버튼을 누르면 고무줄·겹·10 mm 각재·철물을 하나씩 바꿔 점수가 오르는 것을 찾아요.</li></ul>
     </div>
     <div class="panel">
-      <h2>대회 팁</h2>
+      <h2>제작 팁</h2>
       <ul class="tips" id="ctips"></ul>
-      <details><summary>대회 준비 체크리스트</summary><ul class="tips gen" id="gtips"></ul>
+      <details><summary>준비 체크리스트</summary><ul class="tips gen" id="gtips"></ul>
         <p class="note">참고한 대회 규정: <a href="https://studentsymposium.asce.org/midsouth/wp-content/uploads/sites/17/2025/01/Balsa-Bridge-Rules-and-Regulations.pdf" target="_blank" rel="noopener">ASCE Mid-South</a> · <a href="https://www.ncdot.gov/initiatives-policies/students-youth/model-bridge-competition/Documents/competition-guidelines.pdf" target="_blank" rel="noopener">NCDOT</a> · <a href="https://stem.ucf.edu/wp-content/uploads/2025/09/2025-2026-Balsa-Bridge-Contest-Guidelines.pdf" target="_blank" rel="noopener">UCF</a> · <a href="https://garrettsbridges.com/?p=3339" target="_blank" rel="noopener">Garrett's Bridges</a></p>
       </details>
     </div>
@@ -267,7 +274,7 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
       <div class="row"><span>효율</span><span id="eff">—</span></div>
       <div class="row"><span>파괴 직전 처짐</span><span id="defl">—</span></div>
       <div class="row"><span>목재 길이 (전체)</span><span id="lw">—</span></div>
-      <div class="row"><span>철근 사용량 (전체)</span><span id="ls">—</span></div>
+      <div class="row"><span>철물 사용량 (전체)</span><span id="ls">—</span></div>
       <div class="row"><span>고무줄 감기 (한 면)</span><span id="nr">—</span></div>
       <div class="row"><span>횡지지 절점</span><span id="nb">—</span></div>
     </div>
@@ -289,14 +296,35 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
       <h2>시험 기록 <button class="btn sm" id="clearhist" type="button">비우기</button></h2>
       <div class="tbl-wrap"><table><thead><tr><th>설계</th><th>kg</th><th>g</th><th>kg/g</th></tr></thead><tbody id="hist"></tbody></table></div>
     </div>
+    <div class="panel assign">
+      <h2>과제 안내 (2조)</h2>
+      <details open>
+        <summary>시험 방법과 규격</summary>
+        <p>받침 두 개 위에 교량을 놓고, 시험 때 얇은 <b>합판</b>을 교량 안에 끼운 뒤 합판 구멍에 줄을 꿰어 <b>물 바구니</b>를 매달아 물을 붓습니다. <b>가장 많이 버틴 조가 1등.</b> 시뮬레이터는 합판이 바닥 높이에 고르게 얹힌다고 보고 분포하중으로 계산해요.</p>
+        <p>규격: 폭 <b>60 mm 조금 초과</b>(너무 넓으면 불리), 길이 <b>600 mm</b>. 힌트: <b>밑바닥이 튼튼해야</b> 많이 버팀.</p>
+      </details>
+      <details>
+        <summary>재료와 접합 규칙</summary>
+        <p>10 mm 각재 10개, 5 mm 각재 20개(부족하면 추가 요청). 접합부는 <b>고무줄 2개</b>, <b>접합부 접착제 금지</b>. 뼈대 부재는 접착제로 집성재(겹쳐 붙이기, 만곡 집성재) 가능. 철사·철물 하이브리드는 계획 발표 때 승인.</p>
+      </details>
+      <details>
+        <summary>일정과 평가</summary>
+        <table><tbody>
+          <tr><td>11/19</td><td>계획 발표(PPT): 구조 형식, 하중 전달 경로, 예상 하중 근거</td></tr>
+          <tr><td>11/26–12/3</td><td>제작 2주 (목조실에서 재료 수령)</td></tr>
+          <tr><td>12/10</td><td>실험 평가(동영상 촬영) + 개인 보고서(A4 1장, 12 pt, 기여도 상호평가)</td></tr>
+        </tbody></table>
+        <p>구조 성능 40 · 재료 활용 20 · 구조 이해도 20 · 참여 20. 계획 발표 자료에는 "설계 저장 · 설계서"의 도면·부재력·예상 하중을 쓰세요.</p>
+      </details>
+    </div>
     <div class="panel">
       <h2>사용법</h2>
       <ul class="help">
         <li><kbd>Q</kbd> 측면 · <kbd>W</kbd> 위 · <kbd>R</kbd> 아래 · <kbd>E</kbd> 3D 보기</li>
-        <li><kbd>1</kbd>–<kbd>4</kbd> 재료 → 점에서 점으로 <b>드래그</b>(또는 두 번 클릭)</li>
+        <li><kbd>1</kbd>–<kbd>5</kbd> 재료(5 mm 1·2·3겹, 10 mm, 철물) → 점에서 점으로 <b>드래그</b>(또는 두 번 클릭)</li>
         <li>측면: 트러스 한 면 (앞뒤 두 면에 똑같이 놓여요)</li>
         <li>위·아래: 높이를 고르고 앞면 절점 ↔ 뒷면 절점을 이어 가로보·X 브레이싱 (아래 보기는 밑에서 올려다본 모습)</li>
-        <li><kbd>5</kbd> 고무줄 +1, <kbd>Shift</kbd>/우클릭 −1 · <kbd>6</kbd> 하중 · <kbd>7</kbd> 지우개</li>
+        <li><kbd>6</kbd> 고무줄 +1, <kbd>Shift</kbd>/우클릭 −1 · <kbd>7</kbd> 하중 · <kbd>8</kbd> 지우개</li>
         <li><kbd>Space</kbd> 하중 시험 · <kbd>Ctrl</kbd>+<kbd>Z</kbd> 되돌리기 · <kbd>Esc</kbd> 그리기 취소</li>
       </ul>
     </div>
@@ -306,9 +334,9 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
         <p>측면 트러스 한 면을 핀 절점 2D 트러스로 보고 직접강성법으로 풉니다. 앞·뒤 두 면이 똑같다고 보고 전체 하중 = 한 면 × 2. 자중은 무시합니다.</p>
         <p><b>하중</b> 기본은 분포하중: 정한 구간(기본 바닥 0–60 cm)에 고르게 실은 하중을, 바닥판이 이웃 절점 사이를 단순 지지한다고 보고 지렛대 규칙으로 절점에 나눕니다. 지점 바로 위의 몫은 땅으로 갑니다. 설정에서 집중하중(추 하나)으로 바꿀 수 있어요.</p>
         <p><b>부재 강성</b> k = (L/EA + 1/(w<sub>a</sub>k<sub>w</sub>) + 1/(w<sub>b</sub>k<sub>w</sub>))<sup>−1</sup>, 고무줄 1회 k<sub>w</sub> = 150 N/mm.</p>
-        <p><b>파괴 판정</b> 목재 인장 σ<sub>t</sub>A · 목재 압축 min(σ<sub>c</sub>A, π²EI/L², π²EI/L<sub>out</sub>²) · 철근 인장 σ<sub>y</sub>A · 철근 압축 min(σ<sub>y</sub>A, π²EI/L²) · 절점 = 감기 수 × 60 N. 절점은 일직선으로 이어지는 같은 재료면 힘의 차이만, 압축은 지압 덕분에 50%만 옮깁니다.</p>
+        <p><b>파괴 판정</b> 목재 인장 σ<sub>t</sub>A · 목재 압축 min(σ<sub>c</sub>A, π²EI/L², π²EI/L<sub>out</sub>²) · 철물 인장 σ<sub>y</sub>A · 철물 압축 min(σ<sub>y</sub>A, π²EI/L²) · 절점 = 감기 수 × 60 N. 절점은 일직선으로 이어지는 같은 재료면 힘의 차이만, 압축은 지압 덕분에 50%만 옮깁니다.</p>
         <p><b>횡지지와 L<sub>out</sub></b> 위 보기에서 가로재 2개와 현재 1구간이 삼각형을 이루면 그 꼭짓점 절점은 옆으로 안 움직인다고 봅니다(지점은 항상). L<sub>out</sub> = 일직선으로 이어진 목재를 따라 횡지지 절점 사이까지의 길이. 가로보만 있고 대각재가 없으면 평행사변형으로 찌그러지므로 지지가 안 됩니다. 가로재는 연직 하중에서 힘을 받지 않는다고 보고 파괴 판정에서 뺍니다.</p>
-        <p><b>재료</b> 목재 5×5 mm, E 10 GPa, σ<sub>t</sub> 60 MPa, σ<sub>c</sub> 35 MPa, 500 kg/m³, n겹이면 A·I ×n. 철근 Ø3 mm (A 7.07 mm²), E 200 GPa, σ<sub>y</sub> 250 MPa, 7,850 kg/m³. 고무줄 1회 0.3 g, 마찰 60 N.</p>
+        <p><b>재료</b> 5 mm 각재(5×5 mm, A 25 mm², I 52 mm⁴), n겹 집성재면 A·I ×n. 10 mm 각재(10×10 mm, A 100 mm², I 833 mm⁴). 목재 E 10 GPa, σ<sub>t</sub> 60 MPa, σ<sub>c</sub> 35 MPa, 500 kg/m³. 철사·철물 Ø3 mm (A 7.07 mm²), E 200 GPa, σ<sub>y</sub> 250 MPa, 7,850 kg/m³. 고무줄 1회 0.3 g, 마찰 60 N.</p>
         <p>선형 해석입니다. 붕괴 장면은 연출이에요. 값은 추정치라 절대값보다 설계안끼리 비교하는 데 쓰세요.</p>
       </details>
     </div>

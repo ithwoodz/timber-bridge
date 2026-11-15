@@ -107,6 +107,11 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
 .rgrid select.btn{color:#fff;background:var(--btn)}
 .wbox{display:flex;align-items:center;gap:4px;font-size:13px}
 .wbox input{width:64px;font:inherit;font-size:13px;padding:4px 6px;border:2px solid #000;background:#fff;color:#111;color-scheme:light}
+.water{font-size:14px;color:#1f4f8f;margin:2px 0}
+.checks li.soft{background:#efe3b8;border-color:#9a7a10;color:#4d3d00}
+.assign{font-size:12px;line-height:1.6}
+.assign table{font-size:12px}
+.assign td,.assign th{padding:2px 4px}
 .sgbtns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 #suglist,.tips{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:12px;line-height:1.5}
 #suglist li{border-bottom:1px dashed #9a9a9a;padding-bottom:6px;display:grid;gap:3px}
@@ -171,10 +176,9 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
   <h1>Timber Bridge 가상 실험실</h1>
   <select class="btn" id="preset" aria-label="프리셋 불러오기">
     <option value="">프리셋 불러오기…</option>
-    <option value="pratt12Strong">Pratt 12칸 고강도 (가장 강함)</option>
-    <option value="prattLowStrong">Pratt h10 고강도 (효율 최고 · 처짐 큼)</option>
-    <option value="warrenStrong">Warren 고강도 (처짐 적음)</option>
-    <option value="prattStrong">Pratt 고강도</option>
+    <option value="prattTallStrong">Pratt h20 고강도 (가장 강함)</option>
+    <option value="prattStrong">Pratt h15 고강도 (효율 최고)</option>
+    <option value="howeStrong">Howe h20 고강도 (처짐 최소)</option>
     <option value="pratt">Pratt 트러스 (기본)</option>
     <option value="empty">빈 캔버스</option>
   </select>
@@ -218,6 +222,7 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
       <h2>예상 최대 하중 (다리 전체) <span class="pill idle" id="stat">—</span></h2>
       <div class="pname" id="pname"></div>
       <div class="big" id="kg">—</div>
+      <div class="water" id="kgwater"></div>
       <div class="sub" id="kgsub"></div>
       <button class="btn go" id="test" type="button">하중 시험 시작 (Space)</button>
     </div>
@@ -226,8 +231,8 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
       <div class="cause" id="cause">—</div>
     </div>
     <div class="panel comp">
-      <h2>대회 모드 <span class="pill idle" id="cpill">—</span></h2>
-      <div class="sub" id="cscore-lbl">대회 점수</div>
+      <h2>과제 규칙 점검 <span class="pill idle" id="cpill">—</span></h2>
+      <div class="sub" id="cscore-lbl">점수 기준</div>
       <div class="cbig" id="cscore">—</div>
       <div class="sub" id="cbasis"></div>
       <ul class="checks" id="cchecks"></ul>
@@ -239,9 +244,11 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
           <label for="r-minl">다리 길이 최소 (mm)</label><input id="r-minl" type="number" min="0" step="1" placeholder="예: 600">
           <label for="r-weight">무게 상한 (g)</label><input id="r-weight" type="number" min="0" step="1" placeholder="예: 150">
           <label for="r-defl">처짐 한계 (mm)</label><input id="r-defl" type="number" min="0" step="0.1" placeholder="예: 12.7">
-          <label for="r-sticks">각재 수 상한</label><input id="r-sticks" type="number" min="0" step="1" placeholder="예: 30">
+          <label for="r-max10">10 mm 각재 지급 (개)</label><input id="r-max10" type="number" min="0" step="1" placeholder="10">
+          <label for="r-max5">5 mm 각재 지급 (개)</label><input id="r-max5" type="number" min="0" step="1" placeholder="20">
+          <label for="r-sticks">각재 수 합계 상한</label><input id="r-sticks" type="number" min="0" step="1" placeholder="빈칸 = 없음">
           <label for="r-stock">각재 한 개 길이 (cm)</label><input id="r-stock" type="number" min="10" step="1">
-          <label for="r-steel">철근 상한 (cm)</label><input id="r-steel" type="number" min="0" step="1" placeholder="예: 120">
+          <label for="r-steel">철물 상한 (cm)</label><input id="r-steel" type="number" min="0" step="1" placeholder="예: 120">
           <label for="r-wraps">고무줄 감기 상한 (회)</label><input id="r-wraps" type="number" min="0" step="1" placeholder="두 면 합계">
           <label for="r-cap">인정 하중 상한 (kg)</label><input id="r-cap" type="number" min="0" step="1" placeholder="예: 50">
         </div>
@@ -251,12 +258,12 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
     <div class="panel">
       <h2>개선 추천</h2>
       <div class="sgbtns"><button class="btn sm" id="sugbtn" type="button">한 칸씩 바꿔 보기</button><button class="btn sm" id="tunebtn" type="button">자동으로 다듬기</button></div>
-      <ul id="suglist"><li class="muted">버튼을 누르면 고무줄·겹·철근을 하나씩 바꿔 대회 점수가 오르는 것을 찾아요.</li></ul>
+      <ul id="suglist"><li class="muted">버튼을 누르면 고무줄·겹·10 mm 각재·철물을 하나씩 바꿔 점수가 오르는 것을 찾아요.</li></ul>
     </div>
     <div class="panel">
-      <h2>대회 팁</h2>
+      <h2>제작 팁</h2>
       <ul class="tips" id="ctips"></ul>
-      <details><summary>대회 준비 체크리스트</summary><ul class="tips gen" id="gtips"></ul>
+      <details><summary>준비 체크리스트</summary><ul class="tips gen" id="gtips"></ul>
         <p class="note">참고한 대회 규정: <a href="https://studentsymposium.asce.org/midsouth/wp-content/uploads/sites/17/2025/01/Balsa-Bridge-Rules-and-Regulations.pdf" target="_blank" rel="noopener">ASCE Mid-South</a> · <a href="https://www.ncdot.gov/initiatives-policies/students-youth/model-bridge-competition/Documents/competition-guidelines.pdf" target="_blank" rel="noopener">NCDOT</a> · <a href="https://stem.ucf.edu/wp-content/uploads/2025/09/2025-2026-Balsa-Bridge-Contest-Guidelines.pdf" target="_blank" rel="noopener">UCF</a> · <a href="https://garrettsbridges.com/?p=3339" target="_blank" rel="noopener">Garrett's Bridges</a></p>
       </details>
     </div>
@@ -270,7 +277,7 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
       <div class="row"><span>효율</span><span id="eff">—</span></div>
       <div class="row"><span>파괴 직전 처짐</span><span id="defl">—</span></div>
       <div class="row"><span>목재 길이 (전체)</span><span id="lw">—</span></div>
-      <div class="row"><span>철근 사용량 (전체)</span><span id="ls">—</span></div>
+      <div class="row"><span>철물 사용량 (전체)</span><span id="ls">—</span></div>
       <div class="row"><span>고무줄 감기 (한 면)</span><span id="nr">—</span></div>
       <div class="row"><span>횡지지 절점</span><span id="nb">—</span></div>
     </div>
@@ -292,14 +299,35 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
       <h2>시험 기록 <button class="btn sm" id="clearhist" type="button">비우기</button></h2>
       <div class="tbl-wrap"><table><thead><tr><th>설계</th><th>kg</th><th>g</th><th>kg/g</th></tr></thead><tbody id="hist"></tbody></table></div>
     </div>
+    <div class="panel assign">
+      <h2>과제 안내 (2조)</h2>
+      <details open>
+        <summary>시험 방법과 규격</summary>
+        <p>받침 두 개 위에 교량을 놓고, 시험 때 얇은 <b>합판</b>을 교량 안에 끼운 뒤 합판 구멍에 줄을 꿰어 <b>물 바구니</b>를 매달아 물을 붓습니다. <b>가장 많이 버틴 조가 1등.</b> 시뮬레이터는 합판이 바닥 높이에 고르게 얹힌다고 보고 분포하중으로 계산해요.</p>
+        <p>규격: 폭 <b>60 mm 조금 초과</b>(너무 넓으면 불리), 길이 <b>600 mm</b>. 힌트: <b>밑바닥이 튼튼해야</b> 많이 버팀.</p>
+      </details>
+      <details>
+        <summary>재료와 접합 규칙</summary>
+        <p>10 mm 각재 10개, 5 mm 각재 20개(부족하면 추가 요청). 접합부는 <b>고무줄 2개</b>, <b>접합부 접착제 금지</b>. 뼈대 부재는 접착제로 집성재(겹쳐 붙이기, 만곡 집성재) 가능. 철사·철물 하이브리드는 계획 발표 때 승인.</p>
+      </details>
+      <details>
+        <summary>일정과 평가</summary>
+        <table><tbody>
+          <tr><td>11/19</td><td>계획 발표(PPT): 구조 형식, 하중 전달 경로, 예상 하중 근거</td></tr>
+          <tr><td>11/26–12/3</td><td>제작 2주 (목조실에서 재료 수령)</td></tr>
+          <tr><td>12/10</td><td>실험 평가(동영상 촬영) + 개인 보고서(A4 1장, 12 pt, 기여도 상호평가)</td></tr>
+        </tbody></table>
+        <p>구조 성능 40 · 재료 활용 20 · 구조 이해도 20 · 참여 20. 계획 발표 자료에는 "설계 저장 · 설계서"의 도면·부재력·예상 하중을 쓰세요.</p>
+      </details>
+    </div>
     <div class="panel">
       <h2>사용법</h2>
       <ul class="help">
         <li><kbd>Q</kbd> 측면 · <kbd>W</kbd> 위 · <kbd>R</kbd> 아래 · <kbd>E</kbd> 3D 보기</li>
-        <li><kbd>1</kbd>–<kbd>4</kbd> 재료 → 점에서 점으로 <b>드래그</b>(또는 두 번 클릭)</li>
+        <li><kbd>1</kbd>–<kbd>5</kbd> 재료(5 mm 1·2·3겹, 10 mm, 철물) → 점에서 점으로 <b>드래그</b>(또는 두 번 클릭)</li>
         <li>측면: 트러스 한 면 (앞뒤 두 면에 똑같이 놓여요)</li>
         <li>위·아래: 높이를 고르고 앞면 절점 ↔ 뒷면 절점을 이어 가로보·X 브레이싱 (아래 보기는 밑에서 올려다본 모습)</li>
-        <li><kbd>5</kbd> 고무줄 +1, <kbd>Shift</kbd>/우클릭 −1 · <kbd>6</kbd> 하중 · <kbd>7</kbd> 지우개</li>
+        <li><kbd>6</kbd> 고무줄 +1, <kbd>Shift</kbd>/우클릭 −1 · <kbd>7</kbd> 하중 · <kbd>8</kbd> 지우개</li>
         <li><kbd>Space</kbd> 하중 시험 · <kbd>Ctrl</kbd>+<kbd>Z</kbd> 되돌리기 · <kbd>Esc</kbd> 그리기 취소</li>
       </ul>
     </div>
@@ -309,9 +337,9 @@ kbd{background:#eee;border:1px solid #777;padding:0 4px;font-family:inherit;font
         <p>측면 트러스 한 면을 핀 절점 2D 트러스로 보고 직접강성법으로 풉니다. 앞·뒤 두 면이 똑같다고 보고 전체 하중 = 한 면 × 2. 자중은 무시합니다.</p>
         <p><b>하중</b> 기본은 분포하중: 정한 구간(기본 바닥 0–60 cm)에 고르게 실은 하중을, 바닥판이 이웃 절점 사이를 단순 지지한다고 보고 지렛대 규칙으로 절점에 나눕니다. 지점 바로 위의 몫은 땅으로 갑니다. 설정에서 집중하중(추 하나)으로 바꿀 수 있어요.</p>
         <p><b>부재 강성</b> k = (L/EA + 1/(w<sub>a</sub>k<sub>w</sub>) + 1/(w<sub>b</sub>k<sub>w</sub>))<sup>−1</sup>, 고무줄 1회 k<sub>w</sub> = 150 N/mm.</p>
-        <p><b>파괴 판정</b> 목재 인장 σ<sub>t</sub>A · 목재 압축 min(σ<sub>c</sub>A, π²EI/L², π²EI/L<sub>out</sub>²) · 철근 인장 σ<sub>y</sub>A · 철근 압축 min(σ<sub>y</sub>A, π²EI/L²) · 절점 = 감기 수 × 60 N. 절점은 일직선으로 이어지는 같은 재료면 힘의 차이만, 압축은 지압 덕분에 50%만 옮깁니다.</p>
+        <p><b>파괴 판정</b> 목재 인장 σ<sub>t</sub>A · 목재 압축 min(σ<sub>c</sub>A, π²EI/L², π²EI/L<sub>out</sub>²) · 철물 인장 σ<sub>y</sub>A · 철물 압축 min(σ<sub>y</sub>A, π²EI/L²) · 절점 = 감기 수 × 60 N. 절점은 일직선으로 이어지는 같은 재료면 힘의 차이만, 압축은 지압 덕분에 50%만 옮깁니다.</p>
         <p><b>횡지지와 L<sub>out</sub></b> 위 보기에서 가로재 2개와 현재 1구간이 삼각형을 이루면 그 꼭짓점 절점은 옆으로 안 움직인다고 봅니다(지점은 항상). L<sub>out</sub> = 일직선으로 이어진 목재를 따라 횡지지 절점 사이까지의 길이. 가로보만 있고 대각재가 없으면 평행사변형으로 찌그러지므로 지지가 안 됩니다. 가로재는 연직 하중에서 힘을 받지 않는다고 보고 파괴 판정에서 뺍니다.</p>
-        <p><b>재료</b> 목재 5×5 mm, E 10 GPa, σ<sub>t</sub> 60 MPa, σ<sub>c</sub> 35 MPa, 500 kg/m³, n겹이면 A·I ×n. 철근 Ø3 mm (A 7.07 mm²), E 200 GPa, σ<sub>y</sub> 250 MPa, 7,850 kg/m³. 고무줄 1회 0.3 g, 마찰 60 N.</p>
+        <p><b>재료</b> 5 mm 각재(5×5 mm, A 25 mm², I 52 mm⁴), n겹 집성재면 A·I ×n. 10 mm 각재(10×10 mm, A 100 mm², I 833 mm⁴). 목재 E 10 GPa, σ<sub>t</sub> 60 MPa, σ<sub>c</sub> 35 MPa, 500 kg/m³. 철사·철물 Ø3 mm (A 7.07 mm²), E 200 GPa, σ<sub>y</sub> 250 MPa, 7,850 kg/m³. 고무줄 1회 0.3 g, 마찰 60 N.</p>
         <p>선형 해석입니다. 붕괴 장면은 연출이에요. 값은 추정치라 절대값보다 설계안끼리 비교하는 데 쓰세요.</p>
       </details>
     </div>
@@ -344,6 +372,12 @@ const MAT = {
   steel: { E: 200000, A: Math.PI * 9 / 4, I: Math.PI * 81 / 64, fy: 250, rho: 0.00785 },
   band:  { kw: 150, slip: 60, g: 0.3 }
 };
+// 목재 단면: wood 값 1~3 = 5 mm 각재를 그 수만큼 겹쳐 붙인 집성재, 10 = 10 mm 각재 1개
+const BIG = 10;
+const secA = w => w === BIG ? 100 : MAT.wood.A1 * w;            // mm²
+const secI = w => w === BIG ? 1e4 / 12 : MAT.wood.I1 * w;       // mm⁴ (10×10: bh³/12 = 833 mm⁴)
+const woodName = w => w === BIG ? '10 mm 각재' : `5 mm ${w}겹`;
+const woodVis = w => w === BIG ? 2.6 : w;                         // 그림 굵기용
 const DEFAULT_WRAPS = 3, MAX_WRAPS = 8, MIN_WRAPS = 1, G_ACC = 9.80665;
 
 const nk = (x, y) => x + ',' + y;
@@ -481,8 +515,8 @@ function solveLinear(K, F, n) {
   for (let r = n - 1; r >= 0; r--) { let s = F[r]; for (let c = r + 1; c < n; c++) s -= K[r][c] * u[c]; u[r] = s / K[r][r]; }
   return { singular: false, u };
 }
-function woodRes(n, L, Lout) {
-  const W = MAT.wood, A = W.A1 * n, pe = Math.PI * Math.PI * W.E * W.I1 * n;
+function woodRes(w, L, Lout) {
+  const W = MAT.wood, A = secA(w), pe = Math.PI * Math.PI * W.E * secI(w);
   return {
     tens: { R: W.ft * A, mode: '인장 파단' },
     comp: [{ R: W.fc * A, mode: '압축 파괴(압궤)' }, { R: pe / (L * L), mode: '면내 좌굴' }, { R: pe / (Lout * Lout), mode: '면외 좌굴' }]
@@ -505,13 +539,13 @@ function analyze(m) {
     const i = addN(s.a), j = addN(s.b);
     const L = Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y) * GRID_MM;
     const base = { seg: s, key: segKey(s.a, s.b), i, j, L, f: 0 };
-    if (s.wood > 0) { const A = MAT.wood.A1 * s.wood; out.elements.push({ ...base, kind: 'wood', n: s.wood, EA: MAT.wood.E * A }); wG += 2 * L * A * MAT.wood.rho; out.woodLen += L; }
+    if (s.wood > 0) { const A = secA(s.wood); out.elements.push({ ...base, kind: 'wood', n: s.wood, EA: MAT.wood.E * A }); wG += 2 * L * A * MAT.wood.rho; out.woodLen += L; }
     if (s.steel) { out.elements.push({ ...base, kind: 'steel', n: 0, EA: MAT.steel.E * MAT.steel.A }); wG += 2 * L * MAT.steel.A * MAT.steel.rho; out.steelLen += 2 * L; }
   }
   out.woodLen *= 2;
   for (const p of Object.values(m.plan)) {
     const L = Math.hypot((p.xb - p.xa) * GRID_MM, m.width * GRID_MM);
-    if (p.wood) { wG += L * MAT.wood.A1 * p.wood * MAT.wood.rho; out.woodLen += L; }
+    if (p.wood) { wG += L * secA(p.wood) * MAT.wood.rho; out.woodLen += L; }
     if (p.steel) { wG += L * MAT.steel.A * MAT.steel.rho; out.steelLen += L; }
   }
   for (const n of nodes) out.wraps += n.w;
@@ -644,7 +678,7 @@ function analyze(m) {
 // ENGINE-END
 /* ───────────────── 모델·프리셋 ───────────────── */
 const CM = 5;                                  // 격자 1칸 = 5 cm
-const MATMAP = { wood1: { wood: 1 }, wood2: { wood: 2 }, wood3: { wood: 3 }, steel: { steel: true } };
+const MATMAP = { wood1: { wood: 1 }, wood2: { wood: 2 }, wood3: { wood: 3 }, wood10: { wood: BIG }, steel: { steel: true } };
 function blankModel() { return { segs: {}, plan: {}, wraps: {}, loadType: 'udl', udl: { y: 0, x0: 0, x1: 12 }, load: nk(6, 0), width: 2, bracingOn: true, name: '빈 캔버스' }; }
 function setPlan(m, y, xa, xb, mat) {
   const k = planKey(y, xa, xb);
@@ -682,9 +716,9 @@ function warrenList() {
   for (let x = 0; x < 12; x += 2) L.push([x, 0, x + 1, 3, 'wood1'], [x + 1, 3, x + 2, 0, 'wood1']);
   return L;
 }
-// 고강도 프리셋: 분포하중(바닥 전체 0–60 cm)에서 가장 약한 곳(절점·부재)을 함께 한 단계씩 보강하기를
+// 고강도 프리셋: 분포하중(바닥 전체 0–60 cm)에서, 5 mm 1→2→3겹→10 mm 각재 순으로 키우며 가장 약한 곳(절점·부재)을 함께 한 단계씩 보강하기를
 // 더 이상 안 될 때까지 반복한 뒤, 하중이 줄지 않는 범위에서 겹·고무줄을 덜어 낸 결과.
-// 부재 = [x1, y1, x2, y2, 목재 겹, 철근], 감기 수는 3회가 아닌 곳만 적는다(최소 2회).
+// 부재 = [x1, y1, x2, y2, 목재 겹, 철물], 감기 수는 3회가 아닌 곳만 적는다(최소 2회).
 function buildFull(name, members, wraps) {
   const m = blankModel(); m.name = name;
   for (const [x1, y1, x2, y2, wood, steel] of members) {
@@ -695,41 +729,40 @@ function buildFull(name, members, wraps) {
   const ls = levelsOf(m); autoBrace(m, 0); if (ls[0] !== 0) autoBrace(m, ls[0]);
   return m;
 }
-const S_PRATT12P3 = [[0,0,1,0,1,0],[1,0,2,0,1,0],[2,0,3,0,1,0],[3,0,4,0,1,0],[4,0,5,0,1,0],[5,0,6,0,1,0],[6,0,7,0,1,0],[7,0,8,0,1,0],[8,0,9,0,1,0],[9,0,10,0,1,0],[10,0,11,0,1,0],[11,0,12,0,1,0],[1,3,2,3,1,0],[2,3,3,3,1,0],[3,3,4,3,2,0],[4,3,5,3,2,0],[5,3,6,3,2,0],[6,3,7,3,2,0],[7,3,8,3,2,0],[8,3,9,3,2,0],[9,3,10,3,1,0],[10,3,11,3,1,0],[0,0,1,3,3,0],[12,0,11,3,3,0],[1,0,1,3,1,0],[2,0,2,3,2,0],[3,0,3,3,2,0],[4,0,4,3,1,0],[5,0,5,3,1,0],[6,0,6,3,1,0],[7,0,7,3,1,0],[8,0,8,3,1,0],[9,0,9,3,2,0],[10,0,10,3,2,0],[11,0,11,3,1,0],[1,3,2,0,1,0],[2,3,3,0,1,0],[3,3,4,0,1,0],[4,3,5,0,1,0],[5,3,6,0,1,0],[11,3,10,0,1,0],[10,3,9,0,1,0],[9,3,8,0,1,0],[8,3,7,0,1,0],[7,3,6,0,1,0]];
-const S_PRATT12P3_W = {'0,0':5,'1,0':2,'2,0':8,'3,0':7,'4,0':5,'6,0':2,'8,0':5,'9,0':7,'10,0':8,'11,0':2,'12,0':5,'1,3':8,'2,3':7,'3,3':5,'5,3':2,'6,3':2,'7,3':2,'9,3':5,'10,3':7,'11,3':8};
-const S_PRATT2 = [[0,0,2,0,1,0],[2,0,4,0,1,0],[4,0,6,0,1,0],[6,0,8,0,1,0],[8,0,10,0,1,0],[10,0,12,0,1,0],[2,2,4,2,2,0],[4,2,6,2,2,0],[6,2,8,2,2,0],[8,2,10,2,2,0],[0,0,2,2,3,0],[12,0,10,2,3,0],[2,0,2,2,1,0],[4,0,4,2,1,0],[6,0,6,2,1,0],[8,0,8,2,1,0],[10,0,10,2,1,0],[2,2,4,0,1,0],[4,2,6,0,1,0],[10,2,8,0,1,0],[8,2,6,0,1,0]];
-const S_PRATT2_W = {'0,0':8,'2,0':4,'4,0':7,'8,0':7,'10,0':4,'12,0':8,'2,2':7,'6,2':2,'10,2':7};
-const S_WARREN3 = [[0,0,2,0,1,0],[2,0,4,0,1,0],[4,0,6,0,1,0],[6,0,8,0,1,0],[8,0,10,0,1,0],[10,0,12,0,1,0],[1,3,3,3,1,0],[3,3,5,3,2,0],[5,3,7,3,2,0],[7,3,9,3,2,0],[9,3,11,3,1,0],[0,0,1,3,3,0],[1,3,2,0,1,0],[2,0,3,3,2,0],[3,3,4,0,1,0],[4,0,5,3,1,0],[5,3,6,0,1,0],[6,0,7,3,1,0],[7,3,8,0,1,0],[8,0,9,3,1,0],[9,3,10,0,2,0],[10,0,11,3,1,0],[11,3,12,0,3,0]];
-const S_WARREN3_W = {'0,0':4,'2,0':8,'4,0':5,'6,0':2,'8,0':5,'10,0':8,'12,0':4,'1,3':8,'3,3':5,'5,3':2,'7,3':2,'9,3':5,'11,3':8};
-const S_PRATT3 = [[0,0,2,0,1,0],[2,0,4,0,1,0],[4,0,6,0,1,0],[6,0,8,0,1,0],[8,0,10,0,1,0],[10,0,12,0,1,0],[2,3,4,3,2,0],[4,3,6,3,2,0],[6,3,8,3,2,0],[8,3,10,3,2,0],[0,0,2,3,3,0],[12,0,10,3,3,0],[2,0,2,3,1,0],[4,0,4,3,1,0],[6,0,6,3,1,0],[8,0,8,3,1,0],[10,0,10,3,1,0],[2,3,4,0,1,0],[4,3,6,0,1,0],[10,3,8,0,1,0],[8,3,6,0,1,0]];
-const S_PRATT3_W = {'0,0':5,'4,0':5,'6,0':2,'8,0':5,'12,0':5,'2,3':5,'4,3':2,'6,3':2,'8,3':2,'10,3':5};
+const S_PRATT4 = [[0,0,2,0,1,0],[2,0,4,0,1,0],[4,0,6,0,1,0],[6,0,8,0,1,0],[8,0,10,0,1,0],[10,0,12,0,1,0],[2,4,4,4,2,0],[4,4,6,4,2,0],[6,4,8,4,2,0],[8,4,10,4,2,0],[0,0,2,4,10,0],[12,0,10,4,10,0],[2,0,2,4,1,0],[4,0,4,4,2,0],[6,0,6,4,1,0],[8,0,8,4,2,0],[10,0,10,4,1,0],[2,4,4,0,1,0],[4,4,6,0,1,0],[10,4,8,0,1,0],[8,4,6,0,1,0]];
+const S_PRATT4_W = {'0,0':7,'2,0':5,'4,0':8,'8,0':8,'10,0':5,'12,0':7,'2,4':8,'6,4':2,'10,4':8};
+const S_PRATT3 = [[0,0,2,0,1,0],[2,0,4,0,1,0],[4,0,6,0,1,0],[6,0,8,0,1,0],[8,0,10,0,1,0],[10,0,12,0,1,0],[2,3,4,3,2,0],[4,3,6,3,2,0],[6,3,8,3,2,0],[8,3,10,3,2,0],[0,0,2,3,10,0],[12,0,10,3,10,0],[2,0,2,3,1,0],[4,0,4,3,1,0],[6,0,6,3,1,0],[8,0,8,3,1,0],[10,0,10,3,1,0],[2,3,4,0,1,0],[4,3,6,0,1,0],[10,3,8,0,1,0],[8,3,6,0,1,0]];
+const S_PRATT3_W = {'0,0':8,'2,0':5,'4,0':8,'8,0':8,'10,0':5,'12,0':8,'2,3':8,'6,3':2,'10,3':8};
+const S_HOWE4 = [[0,0,2,0,1,0],[2,0,4,0,1,0],[4,0,6,0,1,0],[6,0,8,0,1,0],[8,0,10,0,1,0],[10,0,12,0,1,0],[2,4,4,4,1,0],[4,4,6,4,1,0],[6,4,8,4,1,0],[8,4,10,4,1,0],[0,0,2,4,10,0],[12,0,10,4,10,0],[2,0,2,4,1,0],[4,0,4,4,1,0],[6,0,6,4,1,0],[8,0,8,4,1,0],[10,0,10,4,1,0],[2,0,4,4,10,0],[4,0,6,4,2,0],[10,0,8,4,10,0],[8,0,6,4,2,0]];
+const S_HOWE4_W = {'0,0':5,'2,0':8,'4,0':5,'6,0':4,'8,0':5,'10,0':8,'12,0':5,'2,4':8,'4,4':5,'6,4':4,'8,4':5,'10,4':8};
 const PRESETS = {
-  pratt12Strong: () => buildFull('Pratt 12칸 고강도', S_PRATT12P3, S_PRATT12P3_W),
-  prattLowStrong: () => buildFull('Pratt h10 고강도', S_PRATT2, S_PRATT2_W),
-  warrenStrong: () => buildFull('Warren 고강도', S_WARREN3, S_WARREN3_W),
-  prattStrong: () => buildFull('Pratt 고강도', S_PRATT3, S_PRATT3_W),
+  prattTallStrong: () => buildFull('Pratt h20 고강도', S_PRATT4, S_PRATT4_W),
+  prattStrong: () => buildFull('Pratt h15 고강도', S_PRATT3, S_PRATT3_W),
+  howeStrong: () => buildFull('Howe h20 고강도', S_HOWE4, S_HOWE4_W),
   pratt: () => build('Pratt 트러스 (기본)', prattList(3, false)),
   empty: () => blankModel()
 };
 
 /* ───────────────── 상태 ───────────────── */
 const $ = id => document.getElementById(id);
-const MATS = { wood1: { name: '목재 1겹', wood: 1 }, wood2: { name: '목재 2겹', wood: 2 }, wood3: { name: '목재 3겹', wood: 3 }, steel: { name: '철근 Ø3', steel: true } };
+const MATS = { wood1: { name: '5 mm 1겹', wood: 1 }, wood2: { name: '5 mm 2겹', wood: 2 }, wood3: { name: '5 mm 3겹', wood: 3 }, wood10: { name: '10 mm 각재', wood: BIG }, steel: { name: '철물 Ø3', steel: true } };
 const ICON = {
   wood: n => { let s = ''; const cols = ['#c89a5b', '#b07d42', '#d9b07a']; for (let l = 0; l < n; l++) { const o = (l - (n - 1) / 2) * 3; for (let i = 0; i < 12; i++) s += `<rect x="${2 + i + o}" y="${12 - i + o}" width="2.2" height="2.2" fill="${i % 3 === 0 ? '#8a5a2b' : cols[l % 3]}"/>`; } return s; },
+  big: () => { let s = ''; for (let i = 0; i < 10; i++) s += `<rect x="${1 + i}" y="${10 - i}" width="4.2" height="4.2" fill="${i % 3 === 0 ? '#7a4f24' : i % 2 ? '#b8874a' : '#a4733a'}"/>`; return s; },
   steel: () => { let s = ''; for (let i = 0; i < 13; i++) s += `<rect x="${1.5 + i}" y="${13 - i}" width="1.6" height="1.6" fill="${i % 2 ? '#d5dde4' : '#7c8790'}"/>`; return s; },
   rubber: () => { const p = [[5,2],[6,2],[7,2],[8,2],[9,2],[10,2],[11,3],[12,4],[13,5],[13,6],[13,7],[13,8],[13,9],[13,10],[12,11],[11,12],[10,13],[9,13],[8,13],[7,13],[6,13],[5,13],[4,12],[3,11],[2,10],[2,9],[2,8],[2,7],[2,6],[2,5],[3,4],[4,3]]; return p.map(([x, y], i) => `<rect x="${x}" y="${y}" width="1.2" height="1.2" fill="${i % 4 ? '#f5c518' : '#c99a00'}"/>`).join(''); },
   load: () => `<rect x="7.3" y="1" width="1.4" height="4" fill="#4b3a2a"/><rect x="3" y="5" width="10" height="9" fill="#5a5f66"/><rect x="3" y="5" width="10" height="2" fill="#8d949c"/><rect x="5" y="9" width="6" height="2" fill="#3a3e43"/>`,
   erase: () => { let s = ''; for (let i = 0; i < 10; i++) s += `<rect x="${3 + i}" y="${3 + i}" width="2" height="2" fill="#d32f2f"/><rect x="${3 + i}" y="${12 - i}" width="2" height="2" fill="#d32f2f"/>`; return s; }
 };
 const TOOLS = [
-  { id: 'wood1', label: '목재 1겹 (5×5 mm 각재)', icon: ICON.wood(1) },
-  { id: 'wood2', label: '목재 2겹', icon: ICON.wood(2) },
-  { id: 'wood3', label: '목재 3겹', icon: ICON.wood(3) },
-  { id: 'steel', label: '철근 Ø3 mm', icon: ICON.steel() },
+  { id: 'wood1', label: '5 mm 각재 1겹 (지급 20개)', icon: ICON.wood(1) },
+  { id: 'wood2', label: '5 mm 각재 2겹 (접착 집성재)', icon: ICON.wood(2) },
+  { id: 'wood3', label: '5 mm 각재 3겹 (접착 집성재)', icon: ICON.wood(3) },
+  { id: 'wood10', label: '10 mm 각재 (지급 10개)', icon: ICON.big() },
+  { id: 'steel', label: '철사·철물 Ø3 mm (계획 발표 때 승인 필요)', icon: ICON.steel() },
   { id: 'rubber', label: '고무줄: 절점 클릭 +1 · Shift/우클릭 −1', icon: ICON.rubber() },
   { id: 'load', label: '하중: 분포는 시작·끝 절점을 드래그, 집중은 절점 클릭 (측면 보기)', icon: ICON.load() },
-  { id: 'erase', label: '지우개 (철근이 겹쳐 있으면 철근부터)', icon: ICON.erase() }
+  { id: 'erase', label: '지우개 (철물이 겹쳐 있으면 철물부터)', icon: ICON.erase() }
 ];
 const VIEWS = { side: '측면', plan: '위', '3d': '3D' };
 const HINTS = {
@@ -766,7 +799,7 @@ function changed(edited = true) {
 
 /* ───────────────── 패널 ───────────────── */
 const cm = v => (v * CM) + '';
-function elemLabel(e) { const a = R.nodes[e.i], b = R.nodes[e.j]; return `${e.kind === 'wood' ? '목재 ' + e.n + '겹' : '철근'} (${cm(a.x)},${cm(a.y)})→(${cm(b.x)},${cm(b.y)})`; }
+function elemLabel(e) { const a = R.nodes[e.i], b = R.nodes[e.j]; return `${e.kind === 'wood' ? woodName(e.n) : '철물'} (${cm(a.x)},${cm(a.y)})→(${cm(b.x)},${cm(b.y)})`; }
 function capLabel(c) {
   if (c.type === 'joint') { const n = R.nodes[c.idx]; return `절점 (${cm(n.x)},${cm(n.y)}) 고무줄 미끄러짐`; }
   const e = R.elements[c.idx]; return `${elemLabel(e)} · ${e.mode}`;
@@ -780,7 +813,7 @@ function critHTML(c) {
   const tip = e.f < 0
     ? (e.mode === '면외 좌굴' ? `옆으로 잡아 주는 점이 없어 ${(e.Lout / 10).toFixed(0)} cm 길이로 좌굴해요. 위 보기에서 이 높이에 X자 브레이싱을 넣으세요.`
       : e.mode.includes('좌굴') ? '더 짧게 나누거나 겹을 늘리세요 (P<sub>cr</sub> ∝ I/L²).' : '단면을 키우세요 (겹 늘리기).')
-    : (e.kind === 'wood' ? '철근을 겹치거나 겹을 늘리세요.' : '목재를 겹쳐 힘을 나누세요.');
+    : (e.kind === 'wood' ? '철물을 겹치거나 겹을 늘리세요.' : '목재를 겹쳐 힘을 나누세요.');
   return `<span class="bad">${elemLabel(e)} · ${e.mode}</span><br>${F > 0 ? '인장' : '압축'} ${Math.abs(F).toFixed(0)} N에서 파괴. ${tip}`;
 }
 function updatePanel() {
@@ -797,13 +830,14 @@ function updatePanel() {
   $('stat').className = 'pill ' + (ok ? 'ok' : r.status === 'unstable' ? 'bad' : 'idle');
   $('stat').textContent = ok ? '안정' : r.status === 'unstable' ? '불안정 (메커니즘)' : '해석 대기';
   if (!ok) {
-    $('kg').textContent = '—'; $('kgsub').textContent = '';
+    $('kg').textContent = '—'; $('kgsub').textContent = ''; $('kgwater').textContent = '';
     $('cause').innerHTML = `<span class="bad">${r.msg}</span>`;
     ['eff', 'defl'].forEach(i => $(i).textContent = '—');
     $('weak').innerHTML = '<li class="muted">해석이 끝나면 보여요</li>';
     return;
   }
   $('kg').textContent = r.kg.toFixed(1) + ' kg';
+  $('kgwater').textContent = `물 약 ${r.kg.toFixed(1)} L (1 kg ≈ 1 L, 바구니 무게 제외)`;
   $('kgsub').textContent = `한 면 ${r.Pface.toFixed(0)} N × 2면 = ${r.Ptotal.toFixed(0)} N · ${loadSummary()}`;
   $('cause').innerHTML = critHTML(r.govern) + (r.warn ? `<div class="warn">⚠ ${r.warn}</div>` : '');
   $('eff').textContent = `${(r.kg / r.weight).toFixed(3)} kg/g (자기 무게의 ${(r.kg * 1000 / r.weight).toFixed(0)}배)`;
@@ -895,7 +929,7 @@ function supportsSide(face) {
 }
 const ratioCol = (r, l = 50) => `hsl(${Math.max(0, 120 * (1 - Math.min(r, 1)))},85%,${r >= 1 ? l - 5 : l}%)`;
 function baseStyle(kind, n) {
-  return kind === 'wood' ? { w: Math.max(4, scale * 0.55) * (1 + 0.5 * (n - 1)), col: '#c89a5b', side: '#8a5d2e', out: '#4a2f12', hi: '#e3c08b' }
+  return kind === 'wood' ? { w: Math.max(4, scale * 0.55) * (1 + 0.5 * (woodVis(n) - 1)), col: n === BIG ? '#b07a42' : '#c89a5b', side: '#8a5d2e', out: '#4a2f12', hi: '#e3c08b' }
     : { w: Math.max(3, scale * 0.38), col: '#b8c2cc', side: '#6c7680', out: '#22272b', hi: '#f2f6f9' };
 }
 function elemStyle(e, Pnow) {
@@ -1305,7 +1339,7 @@ function placeBox(mesh, a, b, t, d) {
   mesh.scale.set(Math.max(len, 0.01), t, d);
   const q = qFromDir(dir); mesh.quaternion.set(q[0], q[1], q[2], q[3]);
 }
-function barDims(kind, n) { return kind === 'wood' ? [1.0, 0.8 * n] : [0.55, 0.55]; }
+function barDims(kind, n) { return kind === 'wood' ? (n === BIG ? [1.6, 1.6] : [1.0, 0.8 * n]) : [0.55, 0.55]; }
 function update3D(disp, Pnow, flash) {
   if (!T) return;
   const W = Wcm(), bars = barList(disp); let bi = 0;
@@ -1439,7 +1473,7 @@ function finish() {
   else {
     lastCrit = r.govern;
     const why = r.govern.type === 'joint' ? '고무줄 절점 미끄러짐' : r.elements[r.govern.idx].mode;
-    counter(`${r.kg.toFixed(1)} kg 에서 파괴!<small>${why}</small>`, true);
+    counter(`${r.kg.toFixed(1)} kg 에서 파괴!<small>물 약 ${r.kg.toFixed(1)} L · ${why}</small>`, true);
     history.unshift({ name: S.name, kg: r.kg.toFixed(1), g: r.weight.toFixed(1), eff: (r.kg / r.weight).toFixed(3) });
     history = history.slice(0, 8); renderHistory(); save();
   }
@@ -1486,7 +1520,7 @@ function eraseItem(it) {
   if (!s) return;
   if (erasing) erasing.add(id);
   if (eraseSnap) { undoStack.push(eraseSnap); eraseSnap = null; } else if (!erasing) snapshot();
-  if (s.wood && s.steel) { s.steel = false; toast('겹쳐 있던 철근을 뺐어요. 한 번 더 지우면 목재도 지워져요.'); }
+  if (s.wood && s.steel) { s.steel = false; toast('겹쳐 있던 철물을 뺐어요. 한 번 더 지우면 목재도 지워져요.'); }
   else delete coll[it.key];
   hoverItem = null;
   changed();
@@ -1559,7 +1593,7 @@ function showTip(px_, py_) {
   } else if (hoverItem && hoverItem.type === 'seg') {
     const els = R.elements.filter(e => e.key === hoverItem.key);
     html = els.map(e => {
-      const head = `<b>${e.kind === 'wood' ? '목재 ' + e.n + '겹' : '철근 Ø3'}</b> · 길이 ${(e.L / 10).toFixed(1)} cm`;
+      const head = `<b>${e.kind === 'wood' ? woodName(e.n) : '철물 Ø3'}</b> · 길이 ${(e.L / 10).toFixed(1)} cm`;
       if (!ok) return head + `<br>인장 저항 ${e.res ? e.res.tens.R.toFixed(0) : '—'} N`;
       if (Math.abs(e.f) < 1e-9) return head + '<br>0부재 (힘 없음)';
       const F = e.f * R.Pface;
@@ -1569,7 +1603,7 @@ function showTip(px_, py_) {
     }).join('<hr>');
   } else if (hoverItem && hoverItem.type === 'plan') {
     const p = S.plan[hoverItem.key], L = Math.hypot((p.xb - p.xa) * CM, Wcm());
-    html = `<b>${p.xa === p.xb ? '가로보' : '횡브레이싱'}</b> · ${p.wood ? '목재 ' + p.wood + '겹' : ''}${p.wood && p.steel ? ' + ' : ''}${p.steel ? '철근' : ''} · 길이 ${L.toFixed(1)} cm<br>연직 하중만 받으므로 부재력 0. 옆으로 잡아 주는 역할`;
+    html = `<b>${p.xa === p.xb ? '가로보' : '횡브레이싱'}</b> · ${p.wood ? woodName(p.wood) : ''}${p.wood && p.steel ? ' + ' : ''}${p.steel ? '철물' : ''} · 길이 ${L.toFixed(1)} cm<br>연직 하중만 받으므로 부재력 0. 옆으로 잡아 주는 역할`;
   }
   if (!html) { tip.hidden = true; return; }
   tip.innerHTML = html; tip.hidden = false;
@@ -1619,7 +1653,7 @@ document.addEventListener('keydown', e => {
   const tag = e.target.tagName;
   if (tag === 'SELECT' || (tag === 'INPUT' && e.target.type !== 'checkbox')) return;
   if (e.key === ' ' && (tag === 'INPUT' || tag === 'BUTTON')) { e.preventDefault(); e.target.blur(); }
-  if (e.key >= '1' && e.key <= '7') setTool(TOOLS[+e.key - 1].id);
+  if (e.key >= '1' && e.key <= String(TOOLS.length)) setTool(TOOLS[+e.key - 1].id);
   else if (e.key === ' ') { e.preventDefault(); startTest(); }
   else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); doUndo(); }
   else if (e.key === 'Escape') { startNode = null; loadStart = null; dirty = true; }
@@ -1670,7 +1704,7 @@ function loop(now) {
   if (mode === 'test') {
     anim.t = Math.min(1, (now - anim.t0) / DUR);
     const e = anim.t;
-    counter((e * anim.R.kg).toFixed(1) + ' kg', true);
+    counter(`${(e * anim.R.kg).toFixed(1)} kg<small>물 ${(e * anim.R.kg).toFixed(1)} L</small>`, true);
     update3D(anim.exag * e * anim.R.Pface, e * anim.R.Pface, false); dirty = true;
     if (anim.t >= 1) { mode = 'flash'; anim.t1 = now; }
   } else if (mode === 'flash') {
@@ -1688,41 +1722,47 @@ function loop(now) {
 }
 
 
-/* ───────────────── 대회 모드: 규칙 점검 · 점수 · 개선 추천 · 팁 ───────────────── */
+/* ───────────────── 과제 규칙 점검 · 점수 · 개선 추천 · 팁 ───────────────── */
 const RULES_KEY = 'tb-lab-3d-rules';
-const RULES = Object.assign({ score: 'eff', minWidth: 60, minLength: 600, maxWeight: '', deflLimit: '', maxSticks: '', maxSteel: '', maxWraps: '', cap: '', stock: 60, margin: 0.5 },
+const RULES = Object.assign({ v: 2, score: 'load', minWidth: 60, minLength: 600, max10: 10, max5: 20, maxWeight: '', deflLimit: '', maxSticks: '', maxSteel: '', maxWraps: '', cap: '', stock: 60, margin: 0.5 },
   (() => { try { return JSON.parse(localStorage.getItem(RULES_KEY)) || {}; } catch (e) { return {}; } })());
+// 과제 규칙(최대 하중으로 순위, 지급량 10 mm 10개·5 mm 20개)으로 예전 저장값을 한 번 옮긴다
+if (!(RULES.v >= 2)) { Object.assign(RULES, { v: 2, score: 'load', max10: 10, max5: 20 }); try { localStorage.setItem('tb-lab-3d-rules', JSON.stringify(RULES)); } catch (e) {} }
 function storeRules() { try { localStorage.setItem(RULES_KEY, JSON.stringify(RULES)); } catch (e) {} }
 const numOrNull = v => (v === '' || v == null || isNaN(+v) || +v <= 0) ? null : +v;
 
-// 재료 개수: 각재 조각(두 면 + 가로재), 각재 몇 개에서 잘라내는지, 철근 길이, 고무줄 감기 수
-function materialsOf(m) {
-  const pieces = [];
-  let steel = 0;
-  for (const s of Object.values(m.segs)) {
-    const L = Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y) * 5;
-    for (let f = 0; f < 2; f++) { for (let k = 0; k < s.wood; k++) pieces.push(L); if (s.steel) steel += L; }
-  }
-  for (const p of Object.values(m.plan)) {
-    const L = Math.hypot((p.xb - p.xa) * 5, m.width * 5);
-    for (let k = 0; k < p.wood; k++) pieces.push(L); if (p.steel) steel += L;
-  }
-  let wraps = 0; for (const k of structNodes(m).keys()) wraps += 2 * getWraps(m, k);
+// 재료 개수: 각재 조각(두 면 + 가로재), 각재 몇 개에서 잘라내는지, 철물 길이, 고무줄 감기 수
+// 각재 몇 개에서 잘라내는지: 긴 조각부터 남은 길이에 채워 넣기 (톱날 두께 0.2 cm)
+function packCount(pieces) {
   const lens = pieces.map(L => L + 2 * RULES.margin).sort((a, b) => b - a), bins = [];
   let tooLong = 0;
   for (const L of lens) { if (L > RULES.stock) { tooLong++; continue; } const i = bins.findIndex(r => r >= L + 0.2); if (i >= 0) bins[i] -= L + 0.2; else bins.push(RULES.stock - L - 0.2); }
-  return { pieces: pieces.length, sticks: bins.length + tooLong, tooLong, steel, wraps };
+  return { sticks: bins.length + tooLong, tooLong };
+}
+function materialsOf(m) {
+  const p5 = [], p10 = [];
+  let steel = 0;
+  const put = (w, L, n) => { for (let f = 0; f < n; f++) { if (w === BIG) p10.push(L); else for (let k = 0; k < w; k++) p5.push(L); } };
+  for (const s of Object.values(m.segs)) { const L = Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y) * 5; put(s.wood, L, 2); if (s.steel) steel += 2 * L; }
+  for (const p of Object.values(m.plan)) { const L = Math.hypot((p.xb - p.xa) * 5, m.width * 5); put(p.wood, L, 1); if (p.steel) steel += L; }
+  let wraps = 0; for (const k of structNodes(m).keys()) wraps += 2 * getWraps(m, k);
+  const a = packCount(p5), b = packCount(p10);
+  return { pieces5: p5.length, pieces10: p10.length, sticks5: a.sticks, sticks10: b.sticks, tooLong: a.tooLong + b.tooLong, steel, wraps };
 }
 function compEval(m, r) {
   const ev = { ok: r.status === 'ok', kg: 0, counted: 0, limitBy: null, checks: [], viol: 0, score: null, mat: materialsOf(m) };
-  const chk = (label, val, lim, ok, unit) => { ev.checks.push({ label, val, lim, ok, unit }); if (!ok) ev.viol++; };
+  // soft = 지급량처럼 넘어도 추가 요청이 되는 항목: 주의로만 표시하고 위반으로 세지 않는다
+  const chk = (label, val, lim, ok, unit, soft) => { ev.checks.push({ label, val, lim, ok, unit, soft }); if (!ok && !soft) ev.viol++; };
   const mw = numOrNull(RULES.maxWeight), ms = numOrNull(RULES.maxSticks), mst = numOrNull(RULES.maxSteel), mwr = numOrNull(RULES.maxWraps), dl = numOrNull(RULES.deflLimit), cap = numOrNull(RULES.cap);
   const mnw = numOrNull(RULES.minWidth), mnl = numOrNull(RULES.minLength);
-  if (mnw) chk('다리 폭', (m.width * 50).toFixed(0) + ' mm', '≥ ' + mnw + ' mm', m.width * 50 >= mnw - 1e-6);
+  if (mnw) chk('다리 폭', (m.width * 50).toFixed(0) + ' mm', mnw + ' mm 초과', m.width * 50 > mnw + 1e-6);
   if (mnl) { const xs = [...structNodes(m).values()].map(n => n.x); const len = xs.length ? (Math.max(...xs) - Math.min(...xs)) * 50 : 0; chk('다리 길이', len.toFixed(0) + ' mm', '≥ ' + mnl + ' mm', len >= mnl - 1e-6); }
   if (mw) chk('다리 무게', r.weight.toFixed(1) + ' g', '≤ ' + mw + ' g', r.weight <= mw);
-  if (ms) chk(`각재 수 (${RULES.stock} cm짜리)`, ev.mat.sticks + '개', '≤ ' + ms + '개', ev.mat.sticks <= ms);
-  if (mst) chk('철근 길이', (ev.mat.steel / 10).toFixed(0) + ' cm', '≤ ' + mst + ' cm', ev.mat.steel / 10 <= mst);
+  const m5 = numOrNull(RULES.max5), m10 = numOrNull(RULES.max10);
+  if (m10) chk(`10 mm 각재 (${RULES.stock} cm짜리)`, ev.mat.sticks10 + '개', `지급 ${m10}개`, ev.mat.sticks10 <= m10, '', true);
+  if (m5) chk(`5 mm 각재 (${RULES.stock} cm짜리)`, ev.mat.sticks5 + '개', `지급 ${m5}개`, ev.mat.sticks5 <= m5, '', true);
+  if (ms) chk(`각재 수 합계`, (ev.mat.sticks5 + ev.mat.sticks10) + '개', '≤ ' + ms + '개', ev.mat.sticks5 + ev.mat.sticks10 <= ms);
+  if (mst) chk('철물 길이', (ev.mat.steel / 10).toFixed(0) + ' cm', '≤ ' + mst + ' cm', ev.mat.steel / 10 <= mst);
   if (mwr) chk('고무줄 감기', ev.mat.wraps + '회', '≤ ' + mwr + '회', ev.mat.wraps <= mwr);
   if (ev.mat.tooLong) chk('각재보다 긴 부재', ev.mat.tooLong + '개', '0개 (이어 붙여야 함)', false);
   if (!ev.ok) return ev;
@@ -1747,10 +1787,11 @@ function candidates(m) {
   }
   for (const [key, s] of Object.entries(m.segs)) {
     const nm = `(${s.a.x * 5},${s.a.y * 5})–(${s.b.x * 5},${s.b.y * 5})`;
-    if (s.wood && s.wood < 3) { const c = clone(); c.segs[key].wood++; out.push({ m: c, txt: `${nm} 목재 ${s.wood}→${s.wood + 1}겹` }); }
-    if (s.wood > 1) { const c = clone(); c.segs[key].wood--; out.push({ m: c, txt: `${nm} 목재 ${s.wood}→${s.wood - 1}겹` }); }
-    if (!s.steel && s.wood) { const c = clone(); c.segs[key].steel = true; out.push({ m: c, txt: `${nm} 철근 덧대기` }); }
-    if (s.steel && s.wood) { const c = clone(); c.segs[key].steel = false; out.push({ m: c, txt: `${nm} 철근 빼기` }); }
+    const up = s.wood === 3 ? BIG : s.wood && s.wood < 3 ? s.wood + 1 : null, dn = s.wood === BIG ? 3 : s.wood > 1 ? s.wood - 1 : null;
+    if (up) { const c = clone(); c.segs[key].wood = up; out.push({ m: c, txt: `${nm} ${woodName(s.wood)}→${woodName(up)}` }); }
+    if (dn) { const c = clone(); c.segs[key].wood = dn; out.push({ m: c, txt: `${nm} ${woodName(s.wood)}→${woodName(dn)}` }); }
+    if (!s.steel && s.wood) { const c = clone(); c.segs[key].steel = true; out.push({ m: c, txt: `${nm} 철물 덧대기` }); }
+    if (s.steel && s.wood) { const c = clone(); c.segs[key].steel = false; out.push({ m: c, txt: `${nm} 철물 빼기` }); }
   }
   return out;
 }
@@ -1790,6 +1831,7 @@ function contextTips(r, ev) {
   const g = r.govern;
   if (g.type === 'joint') tips.push(['tip', `가장 약한 곳이 절점이에요. 고무줄 1회는 두 면 합쳐 0.6 g뿐이라, ${capLabel(g).split(' 고무줄')[0]}에 한 번 더 감는 게 무게 대비 가장 싼 보강이에요.`]);
   else { const e = r.elements[g.idx]; if (e.mode === '면외 좌굴') tips.push(['tip', '옆으로 휘어서 깨질 예정이에요. 겹을 늘리기 전에 그 높이에 X 브레이싱을 먼저 넣는 게 가벼워요.']); else if (e.mode.includes('좌굴')) tips.push(['tip', '압축재가 좌굴로 깨질 예정이에요. 길이를 반으로 나누면 버티는 힘이 4배(∝ 1/L²)라 겹을 늘리는 것보다 효과가 클 때가 많아요.']); }
+  if (g.type === 'joint' ? r.nodes[g.idx].y === 0 : (r.elements[g.idx].seg.a.y === 0 && r.elements[g.idx].seg.b.y === 0)) tips.push(['tip', '가장 약한 곳이 바닥(높이 0)이에요. 교수님 힌트대로 밑바닥을 튼튼하게: 하현재를 10 mm 각재나 2–3겹 집성재로, 바닥 절점 고무줄을 더 감으세요.']);
   const lazy = r.elements.filter(e => e.kind === 'wood' && e.n >= 2 && isFinite(e.cap) && e.cap > 3 * r.Pface);
   if (lazy.length) tips.push(['tip', `힘을 거의 안 받는 두꺼운 부재가 ${lazy.length}개 있어요 (${lazy.slice(0, 3).map(e => elemLabel(e)).join(', ')}). 겹을 줄이면 무게가 줄어 효율이 올라요.`]);
   const zero = r.elements.filter(e => Math.abs(e.f) < 1e-9);
@@ -1798,16 +1840,19 @@ function contextTips(r, ev) {
   return tips;
 }
 const GENERAL_TIPS = [
-  '각재를 고를 때 옹이, 뒤틀림, 결이 비스듬한 것은 빼세요. 모델은 결함 없는 목재를 가정해요.',
+  '교수님 힌트: 밑바닥이 튼튼해야 많이 버텨요. 합판·바구니 하중이 바닥 쪽으로 들어오니 하현재와 바닥 절점을 먼저 보강하세요.',
+  '접합부는 고무줄 2개로만, 접착제 금지예요. 접착제는 5 mm 각재를 겹쳐 집성재(부재)를 만들 때만 써요.',
+  '10 mm 각재는 단면이 커서 좌굴에 강해요(I = 833 mm⁴로 5 mm 3겹의 5배). 길게 압축받는 상현재·끝 사재에 아껴 쓰세요.',
   '절점에서 부재 중심선이 한 점에서 만나게 맞추세요. 어긋나면 비틀림이 생겨 계산보다 일찍 깨져요.',
   '두 트러스를 같은 실물 크기 도면 위에서 만들어 모양을 똑같이 맞추세요. 계산은 두 면이 같다고 봐요.',
-  '대회 무게에 고무줄·접착제가 들어가는지, 파괴를 "부러짐"으로 보는지 "처짐 한계"로 보는지 규칙을 먼저 확인하세요.',
-  '가능하면 시험용 부재 몇 개를 먼저 부숴 보고, 그 결과로 목재 강도·고무줄 마찰 값을 보정하세요. 결과는 설계안끼리 비교하는 데 가장 믿을 만해요.'
+  '각재를 고를 때 옹이, 뒤틀림, 결이 비스듬한 것은 빼세요. 모델은 결함 없는 목재를 가정해요.',
+  '철사·철물을 쓰려면 11/19 계획 발표 때 아이디어를 말하고 승인받으세요.',
+  '시험용 부재와 고무줄 접합 몇 개를 먼저 부숴 보고, 그 결과로 상수를 보정하세요. 계산값은 설계안끼리 비교할 때 가장 믿을 만해요.'
 ];
 
 /* ── 패널 ── */
 function syncRules() {
-  for (const [id, key] of [['r-score', 'score'], ['r-minw', 'minWidth'], ['r-minl', 'minLength'], ['r-weight', 'maxWeight'], ['r-defl', 'deflLimit'], ['r-sticks', 'maxSticks'], ['r-stock', 'stock'], ['r-steel', 'maxSteel'], ['r-wraps', 'maxWraps'], ['r-cap', 'cap']]) {
+  for (const [id, key] of [['r-score', 'score'], ['r-minw', 'minWidth'], ['r-minl', 'minLength'], ['r-weight', 'maxWeight'], ['r-defl', 'deflLimit'], ['r-max10', 'max10'], ['r-max5', 'max5'], ['r-sticks', 'maxSticks'], ['r-stock', 'stock'], ['r-steel', 'maxSteel'], ['r-wraps', 'maxWraps'], ['r-cap', 'cap']]) {
     const el = $(id); if (el && document.activeElement !== el) el.value = RULES[key];
   }
 }
@@ -1815,11 +1860,12 @@ function renderComp() {
   if (!R) return;
   const ev = compEval(S, R);
   $('cscore').textContent = scoreTxt(ev);
-  $('cscore-lbl').textContent = RULES.score === 'load' ? '대회 점수 (인정 하중)' : '대회 점수 (하중 ÷ 무게)';
+  $('cscore-lbl').textContent = RULES.score === 'load' ? '점수 기준: 버틴 하중 (순위 = 가장 많이 버틴 조)' : '점수 기준: 하중 ÷ 무게';
   $('cbasis').textContent = !ev.ok ? '구조가 안정해야 점수가 나와요'
     : `인정 하중 ${ev.counted.toFixed(1)} kg${ev.limitBy ? ` (${ev.limitBy})` : ''} · 무게 ${R.weight.toFixed(1)} g`;
-  const rows = ev.checks.map(c => `<li class="${c.ok ? 'pass' : 'fail'}"><span>${c.ok ? '✔' : '✖'} ${c.label}</span><span>${c.val} <small>${c.lim}</small></span></li>`);
-  rows.push(`<li class="info"><span>재료</span><span>각재 조각 ${ev.mat.pieces}개 → ${RULES.stock} cm 각재 ${ev.mat.sticks}개 · 고무줄 ${ev.mat.wraps}회</span></li>`);
+  const rows = ev.checks.map(c => `<li class="${c.ok ? 'pass' : c.soft ? 'soft' : 'fail'}"><span>${c.ok ? '✔' : c.soft ? '!' : '✖'} ${c.label}</span><span>${c.val} <small>${c.lim}${!c.ok && c.soft ? ' · 추가 요청' : ''}</small></span></li>`);
+  rows.push(`<li class="info"><span>접합부</span><span>고무줄 2개 · 접착제 금지 (규칙)</span></li>`);
+  rows.push(`<li class="info"><span>재료</span><span>10 mm 조각 ${ev.mat.pieces10}개 · 5 mm 조각 ${ev.mat.pieces5}개 · 고무줄 ${ev.mat.wraps}회</span></li>`);
   $('cchecks').innerHTML = rows.join('');
   $('cpill').className = 'pill ' + (!ev.ok ? 'idle' : ev.viol ? 'bad' : 'ok');
   $('cpill').textContent = !ev.ok ? '대기' : ev.viol ? `규칙 위반 ${ev.viol}` : '규칙 통과';
@@ -1845,7 +1891,7 @@ $('suglist').addEventListener('click', e => {
 });
 $('sugbtn').onclick = () => { if (mode === 'build') renderSuggestions(); };
 $('tunebtn').onclick = () => { if (mode === 'build') autoTune(); };
-for (const [id, key] of [['r-score', 'score'], ['r-minw', 'minWidth'], ['r-minl', 'minLength'], ['r-weight', 'maxWeight'], ['r-defl', 'deflLimit'], ['r-sticks', 'maxSticks'], ['r-stock', 'stock'], ['r-steel', 'maxSteel'], ['r-wraps', 'maxWraps'], ['r-cap', 'cap']]) {
+for (const [id, key] of [['r-score', 'score'], ['r-minw', 'minWidth'], ['r-minl', 'minLength'], ['r-weight', 'maxWeight'], ['r-defl', 'deflLimit'], ['r-max10', 'max10'], ['r-max5', 'max5'], ['r-sticks', 'maxSticks'], ['r-stock', 'stock'], ['r-steel', 'maxSteel'], ['r-wraps', 'maxWraps'], ['r-cap', 'cap']]) {
   $(id).addEventListener('change', e => {
     const v = e.target.value;
     RULES[key] = key === 'score' ? v : key === 'stock' ? Math.max(10, +v || 60) : (v === '' ? '' : Math.max(0, +v));
@@ -1884,14 +1930,13 @@ function designData() {
   return { r, nodes, name, segs, plans, top };
 }
 function cutList(d) {
-  const wood = [], steel = [];
-  for (const m of d.segs) for (let face = 0; face < 2; face++) {
-    for (let k = 0; k < m.s.wood; k++) wood.push({ L: m.L, id: m.id });
-    if (m.s.steel) steel.push({ L: m.L, id: m.id });
-  }
-  for (const q of d.plans) { for (let k = 0; k < q.p.wood; k++) wood.push({ L: q.L, id: q.id }); if (q.p.steel) steel.push({ L: q.L, id: q.id }); }
-  return { wood, steel };
+  const wood5 = [], wood10 = [], steel = [];
+  const put = (w, L, id) => { if (w === BIG) wood10.push({ L, id }); else for (let k = 0; k < w; k++) wood5.push({ L, id }); };
+  for (const m of d.segs) for (let face = 0; face < 2; face++) { put(m.s.wood, m.L, m.id); if (m.s.steel) steel.push({ L: m.L, id: m.id }); }
+  for (const q of d.plans) { put(q.p.wood, q.L, q.id); if (q.p.steel) steel.push({ L: q.L, id: q.id }); }
+  return { wood5, wood10, wood: wood5.concat(wood10), steel };
 }
+const matTxt = s => [s.wood ? woodName(s.wood) : '', s.steel ? '철물' : ''].filter(Boolean).join(' + ');
 function groupCuts(list) {
   const g = new Map();
   for (const p of list) {
@@ -1934,8 +1979,8 @@ function tag(g, x, y, text, bg) {
 }
 function memberLine(g, A, B, wood, steel) {
   const dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
-  if (wood) { g.strokeStyle = '#9a6a33'; g.lineWidth = 3 + 2.5 * (wood - 1); g.lineCap = 'butt'; g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.stroke(); }
-  if (steel) { const o = wood ? 3 + 1.3 * wood : 0; g.strokeStyle = '#46525e'; g.lineWidth = 2; g.setLineDash([7, 4]); g.beginPath(); g.moveTo(A[0] + nx * o, A[1] + ny * o); g.lineTo(B[0] + nx * o, B[1] + ny * o); g.stroke(); g.setLineDash([]); }
+  if (wood) { g.strokeStyle = wood === BIG ? '#7f5226' : '#9a6a33'; g.lineWidth = 3 + 2.5 * (woodVis(wood) - 1); g.lineCap = 'butt'; g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.stroke(); }
+  if (steel) { const o = wood ? 3 + 1.3 * woodVis(wood) : 0; g.strokeStyle = '#46525e'; g.lineWidth = 2; g.setLineDash([7, 4]); g.beginPath(); g.moveTo(A[0] + nx * o, A[1] + ny * o); g.lineTo(B[0] + nx * o, B[1] + ny * o); g.stroke(); g.setLineDash([]); }
 }
 function drawElevation(d) {
   const xs = d.nodes.map(n => n.x * CM), ys = d.nodes.map(n => n.y * CM);
@@ -1982,7 +2027,7 @@ function drawElevation(d) {
   g.fillStyle = '#222'; g.font = 'bold 15px sans-serif'; g.textAlign = 'left';
   g.fillText('측면도 · 같은 트러스 2개 (단위 cm, 격자 5 cm)', padX - 50, 26);
   g.font = '12px sans-serif'; g.fillStyle = '#555';
-  g.fillText('굵은 갈색 = 목재(굵을수록 겹 수 많음) · 회색 점선 = 철근 · ×숫자 = 고무줄 감기 수', padX - 50, 44);
+  g.fillText('굵은 갈색 = 목재(굵을수록 겹 수 많음) · 회색 점선 = 철물 · ×숫자 = 고무줄 감기 수', padX - 50, 44);
   return c.toDataURL('image/png');
 }
 function drawPlanLevel(d, y) {
@@ -2023,14 +2068,14 @@ function buildSteps(d, cuts, pack) {
   const ids = role => d.segs.filter(m => m.role === role).map(m => m.id);
   const join = a => a.length > 6 ? a.slice(0, 6).join(', ') + ` 외 ${a.length - 6}개` : a.join(', ');
   const steps = [];
-  steps.push(['재료 자르기', `아래 절단 목록대로 목재 ${cuts.wood.length}개${cuts.steel.length ? `, 철근 ${cuts.steel.length}개` : ''}를 자릅니다. 길이는 절점 중심 사이 거리에 양 끝 묶을 여유 ${docOpt.margin} cm씩을 더한 값입니다. 같은 길이끼리 모아 이름표를 붙여 두면 헷갈리지 않아요.`]);
+  steps.push(['재료 자르기', `아래 절단 목록대로 ${cuts.wood10.length ? `10 mm 각재 ${cuts.wood10.length}개, ` : ''}5 mm 각재 ${cuts.wood5.length}개${cuts.steel.length ? `, 철물 ${cuts.steel.length}개` : ''}를 자릅니다. 길이는 절점 중심 사이 거리에 양 끝 묶을 여유 ${docOpt.margin} cm씩을 더한 값입니다. 같은 길이끼리 모아 이름표를 붙여 두면 헷갈리지 않아요.`]);
   steps.push(['실물 크기 도면 깔기', `측면도를 실제 크기(경간 60 cm)로 큰 종이에 옮겨 그리고 절점 ${d.nodes.map(n => d.name.get(nk(n.x, n.y))).slice(0, 8).join(', ')}${d.nodes.length > 8 ? ' …' : ''}을 표시합니다. 이 도면 위에서 두 트러스를 똑같이 만듭니다.`]);
-  const multi = d.segs.filter(m => m.s.wood > 1).concat(d.plans.filter(q => q.p.wood > 1));
-  if (multi.length) steps.push(['겹 부재 만들기', `${join(multi.map(m => m.id + `(${(m.s || m.p).wood}겹)`))}는 각재를 겹 수만큼 나란히 붙여 한 다발로 만든 뒤 쓰세요.`]);
+  const multi = d.segs.filter(m => m.s.wood > 1 && m.s.wood !== BIG).concat(d.plans.filter(q => q.p.wood > 1 && q.p.wood !== BIG));
+  if (multi.length) steps.push(['집성재(겹 부재) 만들기', `${join(multi.map(m => m.id + `(${(m.s || m.p).wood}겹)`))}는 5 mm 각재를 겹 수만큼 나란히 대고 접착제로 붙여 집성재로 만든 뒤 쓰세요. 접착제는 부재를 만들 때만 쓰고 접합부에는 쓰지 않아요(규칙).`]);
   const order = [['하현재', ids('하현재')], ['상현재', ids('상현재')], ['수평재', ids('수평재')], ['수직재', ids('수직재')], ['사재', ids('사재')]].filter(([, a]) => a.length);
   steps.push(['측면 트러스 2개 조립', order.map(([r, a]) => `${r} ${join(a)}`).join(' → ') + ' 순서로 도면 위에 놓습니다. 같은 방법으로 한 번 더 만들어 똑같은 트러스 2개를 준비합니다.']);
   const st = d.segs.filter(m => m.s.steel);
-  if (st.length) steps.push(['철근 붙이기', `${join(st.map(m => m.id))}${st.some(m => m.s.wood) ? '는 같은 구간의 목재 옆에 철근을 나란히 대고' : '는 철근만 쓰는 부재로,'} 양 끝 절점에서 목재와 함께 묶습니다.`]);
+  if (st.length) steps.push(['철물 붙이기', `${join(st.map(m => m.id))}${st.some(m => m.s.wood) ? '는 같은 구간의 목재 옆에 철물을 나란히 대고' : '는 철물만 쓰는 부재로,'} 양 끝 절점에서 목재와 함께 묶습니다.`]);
   const wr = d.nodes.map(n => `${d.name.get(nk(n.x, n.y))} ${getWraps(S, nk(n.x, n.y))}회`);
   const tot = d.nodes.reduce((s, n) => s + getWraps(S, nk(n.x, n.y)), 0);
   steps.push(['절점 고무줄 감기', `절점마다 정해진 횟수만큼 고무줄을 감아 단단히 묶습니다: ${wr.join(', ')}. 한 면 ${tot}회, 두 면 합계 ${tot * 2}회. 감기 수가 절점 강도를 정하니 정확히 지켜 주세요.`]);
@@ -2051,9 +2096,11 @@ function buildSteps(d, cuts, pack) {
 let lastDoc = null;
 function renderDoc() {
   R = analyze(S);
-  const d = designData(), cuts = cutList(d), pack = packStock(cuts.wood), r = d.r, ok = r.status === 'ok';
-  const gw = groupCuts(cuts.wood), gs = groupCuts(cuts.steel);
-  const totW = cuts.wood.reduce((s, p) => s + p.L + 2 * docOpt.margin, 0), totS = cuts.steel.reduce((s, p) => s + p.L + 2 * docOpt.margin, 0);
+  const d = designData(), cuts = cutList(d), r = d.r, ok = r.status === 'ok';
+  const pack5 = packStock(cuts.wood5), pack10 = packStock(cuts.wood10), pack = { count: pack5.count + pack10.count, tooLong: pack5.tooLong + pack10.tooLong };
+  const gw5 = groupCuts(cuts.wood5), gw10 = groupCuts(cuts.wood10), gw = gw10.concat(gw5), gs = groupCuts(cuts.steel);
+  const tot = list => list.reduce((s, p) => s + p.L + 2 * docOpt.margin, 0), totW = tot(cuts.wood), totS = tot(cuts.steel);
+  const give = (n, lim) => n > lim ? ` <span class="bad">(지급 ${lim}개보다 ${n - lim}개 많음 · 추가 요청)</span>` : ` <span class="note">(지급 ${lim}개 중)</span>`;
   const wraps = d.nodes.reduce((s, n) => s + getWraps(S, nk(n.x, n.y)), 0);
   const steps = buildSteps(d, cuts, pack);
   const imgs = { side: d.segs.length ? drawElevation(d) : null, plans: [...new Set(d.plans.map(q => q.p.y))].sort((a, b) => b - a).map(y => ({ y, url: drawPlanLevel(d, y) })), three: d.segs.length ? snap3D() : null };
@@ -2068,12 +2115,14 @@ function renderDoc() {
   <div class="opts"><label>각재 한 개 길이 <input id="optstock" type="number" min="10" max="200" step="1" value="${docOpt.stock}"> cm</label>
     <label>양 끝 묶을 여유 <input id="optmargin" type="number" min="0" max="3" step="0.1" value="${docOpt.margin}"> cm</label><span class="note">받은 재료 길이로 바꾸면 개수가 다시 계산돼요</span></div>
   <ul class="bom">
-    <li><b>목재 각재 5×5 mm</b> · 조각 ${cuts.wood.length}개, 총 ${f1(totW)} cm → <b>${pack.count}개</b> 필요${pack.tooLong ? ` <span class="bad">(+ ${docOpt.stock} cm보다 긴 조각 ${pack.tooLong}개)</span>` : ''}</li>
-    ${cuts.steel.length ? `<li><b>철근 Ø3 mm</b> · 조각 ${cuts.steel.length}개, 총 ${f1(totS)} cm (${(r.steelLen * MAT.steel.A * MAT.steel.rho).toFixed(1)} g)</li>` : ''}
+    <li><b>10 mm 각재</b> · 조각 ${cuts.wood10.length}개, 총 ${f1(tot(cuts.wood10))} cm → <b>${pack10.count}개</b> 필요${give(pack10.count, 10)}</li>
+    <li><b>5 mm 각재</b> · 조각 ${cuts.wood5.length}개, 총 ${f1(tot(cuts.wood5))} cm → <b>${pack5.count}개</b> 필요${give(pack5.count, 20)}</li>
+    ${pack.tooLong ? `<li class="bad">각재 한 개(${docOpt.stock} cm)보다 긴 조각 ${pack.tooLong}개: 이어 붙이거나 절점을 넣어 나누세요</li>` : ''}
+    ${cuts.steel.length ? `<li><b>철물 Ø3 mm</b> · 조각 ${cuts.steel.length}개, 총 ${f1(totS)} cm (${(r.steelLen * MAT.steel.A * MAT.steel.rho).toFixed(1)} g)</li>` : ''}
     <li><b>고무줄</b> · 절점 ${d.nodes.length}곳 × 2면, 감기 총 ${wraps * 2}회 (한 면 ${wraps}회)</li>
-    <li><b>도구</b> · 자, 연필, 커터 또는 실톱${cuts.steel.length ? ', 철근 절단용 니퍼(펜치)' : ''}, 실물 크기 도면용 큰 종이</li>
+    <li><b>도구</b> · 자, 연필, 커터 또는 실톱${cuts.steel.length ? ', 철물 절단용 니퍼(펜치)' : ''}, 실물 크기 도면용 큰 종이</li>
   </ul>
-  <div class="tw"><table><thead><tr><th>재료</th><th>자를 길이</th><th>개수</th><th>쓰는 부재</th></tr></thead><tbody>${cutRows(gw, '목재') + cutRows(gs, '철근')}</tbody></table></div>
+  <div class="tw"><table><thead><tr><th>재료</th><th>자를 길이</th><th>개수</th><th>쓰는 부재</th></tr></thead><tbody>${cutRows(gw10, '10 mm 각재') + cutRows(gw5, '5 mm 각재') + cutRows(gs, '철물')}</tbody></table></div>
   <h3>2. 도면</h3>
   <p class="note">그림을 길게 누르거나 우클릭하면 이미지로 저장할 수 있어요.</p>
   ${imgs.side ? `<figure><img src="${imgs.side}" alt="측면도"></figure>` : '<p class="note">측면 트러스가 아직 없어요.</p>'}
@@ -2081,8 +2130,8 @@ function renderDoc() {
   ${imgs.three ? `<figure><img src="${imgs.three}" alt="3D 모습"><figcaption>3D 모습</figcaption></figure>` : ''}
   <h3>3. 부재표</h3>
   <div class="tw"><table><thead><tr><th>번호</th><th>절점</th><th>역할</th><th>재료</th><th>길이</th><th>수량</th><th>파괴 하중일 때 힘</th></tr></thead><tbody>
-    ${d.segs.map(m => `<tr><td>${m.id}</td><td>${m.na}–${m.nb}</td><td>${m.role}</td><td>${[m.s.wood ? `목재 ${m.s.wood}겹` : '', m.s.steel ? '철근' : ''].filter(Boolean).join(' + ')}</td><td>${f1(m.L)} cm</td><td>2 (앞·뒤)</td><td>${forceTxt(m)}</td></tr>`).join('')}
-    ${d.plans.map(q => `<tr><td>${q.id}</td><td>${q.na}–${q.nb}′</td><td>${q.kind} (높이 ${q.p.y * CM})</td><td>${[q.p.wood ? `목재 ${q.p.wood}겹` : '', q.p.steel ? '철근' : ''].filter(Boolean).join(' + ')}</td><td>${f1(q.L)} cm</td><td>1</td><td>0 (횡지지)</td></tr>`).join('')}
+    ${d.segs.map(m => `<tr><td>${m.id}</td><td>${m.na}–${m.nb}</td><td>${m.role}</td><td>${matTxt(m.s)}</td><td>${f1(m.L)} cm</td><td>2 (앞·뒤)</td><td>${forceTxt(m)}</td></tr>`).join('')}
+    ${d.plans.map(q => `<tr><td>${q.id}</td><td>${q.na}–${q.nb}′</td><td>${q.kind} (높이 ${q.p.y * CM})</td><td>${matTxt(q.p)}</td><td>${f1(q.L)} cm</td><td>1</td><td>0 (횡지지)</td></tr>`).join('')}
   </tbody></table></div>
   <h3>4. 절점표</h3>
   <div class="tw"><table><thead><tr><th>절점</th><th>위치 (가로, 높이)</th><th>고무줄</th><th>횡지지</th></tr></thead><tbody>
@@ -2102,13 +2151,14 @@ function docText() {
   L.push(`# ${S.name} · Timber Bridge 설계서`, `경간 60 cm · 폭 ${Wcm()} cm · 높이 ${d.top * CM} cm`);
   L.push(`예상 최대 하중 ${ok ? r.kg.toFixed(1) + ' kg' : '—'} · 무게 ${r.weight.toFixed(1)} g · 효율 ${ok ? (r.kg / r.weight).toFixed(3) : '—'} kg/g`);
   if (ok) L.push(`먼저 깨질 곳: ${capLabel(r.govern)}`);
-  L.push('', '## 1. 준비물', `- 목재 각재 5×5 mm: 조각 ${cuts.wood.length}개 → 각재(${docOpt.stock} cm) ${pack.count}개`);
-  if (cuts.steel.length) L.push(`- 철근 Ø3 mm: 조각 ${cuts.steel.length}개`);
+  L.push('', '## 1. 준비물', `- 10 mm 각재: 조각 ${cuts.wood10.length}개 → ${docOpt.stock} cm 각재 ${packStock(cuts.wood10).count}개 (지급 10개)`, `- 5 mm 각재: 조각 ${cuts.wood5.length}개 → ${docOpt.stock} cm 각재 ${packStock(cuts.wood5).count}개 (지급 20개)`);
+  if (cuts.steel.length) L.push(`- 철물 Ø3 mm: 조각 ${cuts.steel.length}개`);
   L.push(`- 고무줄: 감기 총 ${wraps * 2}회 (절점 ${d.nodes.length}곳 × 2면)`, '', '절단 목록 (양 끝 여유 ' + docOpt.margin + ' cm 포함)');
-  for (const e of gw) L.push(`- 목재 ${f1(e.len)} cm × ${e.count}개 (${[...e.ids].join(', ')})`);
-  for (const e of gs) L.push(`- 철근 ${f1(e.len)} cm × ${e.count}개 (${[...e.ids].join(', ')})`);
+  for (const e of groupCuts(cuts.wood10)) L.push(`- 10 mm 각재 ${f1(e.len)} cm × ${e.count}개 (${[...e.ids].join(', ')})`);
+  for (const e of groupCuts(cuts.wood5)) L.push(`- 5 mm 각재 ${f1(e.len)} cm × ${e.count}개 (${[...e.ids].join(', ')})`);
+  for (const e of gs) L.push(`- 철물 ${f1(e.len)} cm × ${e.count}개 (${[...e.ids].join(', ')})`);
   L.push('', '## 2. 부재표');
-  for (const m of d.segs) L.push(`- ${m.id} ${m.na}–${m.nb} ${m.role} · ${[m.s.wood ? `목재 ${m.s.wood}겹` : '', m.s.steel ? '철근' : ''].filter(Boolean).join(' + ')} · ${f1(m.L)} cm × 2`);
+  for (const m of d.segs) L.push(`- ${m.id} ${m.na}–${m.nb} ${m.role} · ${matTxt(m.s)} · ${f1(m.L)} cm × 2`);
   for (const q of d.plans) L.push(`- ${q.id} ${q.na}–${q.nb}′ ${q.kind}(높이 ${q.p.y * CM} cm) · ${f1(q.L)} cm`);
   L.push('', '## 3. 절점 (가로, 높이 cm · 고무줄)');
   for (const n of d.nodes) { const k = nk(n.x, n.y); L.push(`- ${d.name.get(k)} (${n.x * CM}, ${n.y * CM}) · ${getWraps(S, k)}회`); }
@@ -2167,7 +2217,7 @@ renderSaved();
 /* ───────────────── 시작 ───────────────── */
 const has3D = init3D();
 if (!has3D) { document.querySelector('[data-view="3d"]').disabled = true; }
-if (!load()) S = PRESETS.warrenStrong();
+if (!load()) S = PRESETS.prattTallStrong();
 syncControls(); buildHotbar(); renderHistory();
 R = analyze(S); level = levelsOf(S)[0] ?? 0;
 updatePanel(); setView('side'); resize(); rebuild3D(); setTool(tool);

@@ -1,7 +1,7 @@
 /* ───────────────── 시작 ───────────────── */
 const has3D = init3D();
 if (!has3D) { document.querySelector('[data-view="3d"]').disabled = true; }
-if (!load()) S = PRESETS.warrenStrong();
+if (!load()) S = PRESETS.prattTallStrong();
 syncControls(); buildHotbar(); renderHistory();
 R = analyze(S); level = levelsOf(S)[0] ?? 0;
 updatePanel(); setView('side'); resize(); rebuild3D(); setTool(tool);

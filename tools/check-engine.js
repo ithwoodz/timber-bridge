@@ -14,6 +14,6 @@ const nb = PRESETS.pratt(); nb.bracingOn = false; const nbR = analyze(nb);
 ok(pratt.kg > nbR.kg, `브레이싱 있음 ${pratt.kg.toFixed(1)} kg > 없음 ${nbR.kg.toFixed(1)} kg`);
 const sq = PRESETS.pratt(); delete sq.segs[segKey({ x: 4, y: 3 }, { x: 6, y: 0 })];
 ok(analyze(sq).status === 'unstable', '대각재 하나 뺀 사각형 칸 → 불안정');
-for (const k of ['pratt12Strong', 'prattLowStrong', 'warrenStrong', 'prattStrong']) { const r = analyze(PRESETS[k]()); ok(r.status === 'ok' && r.kg > 180, `${k} ${r.kg.toFixed(1)} kg > 180 kg (분포하중)`); }
+for (const k of ['prattTallStrong', 'prattStrong', 'howeStrong']) { const r = analyze(PRESETS[k]()); ok(r.status === 'ok' && r.kg > 2 * analyze(PRESETS.pratt()).kg * 0.9, `${k} ${r.kg.toFixed(1)} kg ≥ 기본 Pratt의 1.8배 (분포하중)`); }
 for (const k of Object.keys(PRESETS)) { const r = analyze(PRESETS[k]()); console.log(`  ${k}: ${r.status === 'ok' ? r.kg.toFixed(1) + ' kg, ' + r.weight.toFixed(1) + ' g' : r.status}`); }
 process.exit(fail ? 1 : 0);
